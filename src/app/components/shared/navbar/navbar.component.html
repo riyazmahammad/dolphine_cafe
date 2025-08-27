@@ -1,0 +1,44 @@
+<nav class="navbar">
+  <div class="container navbar-content">
+    <a routerLink="/" class="navbar-brand">CafeteriaHub</a>
+    
+    <div class="navbar-menu" [class.active]="isMenuOpen">
+      <div class="navbar-nav" *ngIf="currentUser">
+        <!-- Admin Navigation -->
+        <ng-container *ngIf="isAdmin">
+          <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-link">Dashboard</a>
+          <a routerLink="/admin/menu" routerLinkActive="active" class="nav-link">Menu Management</a>
+          <a routerLink="/admin/orders" routerLinkActive="active" class="nav-link">Orders</a>
+        </ng-container>
+        
+        <!-- Employee Navigation -->
+        <ng-container *ngIf="isEmployee">
+          <a routerLink="/employee/menu" routerLinkActive="active" class="nav-link">Menu</a>
+          <a routerLink="/employee/orders" routerLinkActive="active" class="nav-link">My Orders</a>
+        </ng-container>
+        
+        <!-- User Menu -->
+        <div class="user-menu">
+          <div class="user-info">
+            <span class="user-name">{{ currentUser.name }}</span>
+            <span class="user-role">{{ currentUser.role }}</span>
+          </div>
+          <button (click)="logout()" class="btn btn-secondary btn-sm">Logout</button>
+        </div>
+      </div>
+      
+      <!-- Guest Navigation -->
+      <div class="navbar-nav" *ngIf="!currentUser">
+        <a routerLink="/auth/login" class="nav-link">Login</a>
+        <a routerLink="/auth/signup" class="btn btn-primary">Sign Up</a>
+      </div>
+    </div>
+    
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-btn" (click)="toggleMenu()" *ngIf="currentUser">
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+    </button>
+  </div>
+</nav>
