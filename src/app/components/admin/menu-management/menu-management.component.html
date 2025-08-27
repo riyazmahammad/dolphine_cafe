@@ -1,0 +1,265 @@
+<div class="menu-management-container">
+  <div class="container">
+    <div class="page-header">
+      <h1>Menu Management</h1>
+      <button (click)="showAddItemForm()" class="btn btn-primary">
+        <span class="btn-icon">➕</span>
+        Add New Item
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="search-box">
+        <input
+          type="text"
+          placeholder="Search menu items..."
+          (input)="onSearchChange($event)"
+          class="search-input"
+        >
+        <span class="search-icon">🔍</span>
+      </div>
+
+      <div class="category-filters">
+        <button
+          *ngFor="let category of categories"
+          (click)="onCategoryChange(category)"
+          class="category-btn"
+          [class.active]="selectedCategory === category"
+        >
+          {{ category }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div *ngIf="successMessage" class="alert alert-success">
+      {{ successMessage }}
+    </div>
+
+    <div *ngIf="error && !showAddForm" class="alert alert-error">
+      {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner-large"></div>
+      <p>Loading menu items...</p>
+    </div>
+
+    <!-- Add/Edit Form -->
+    <div *ngIf="showAddForm" class="form-modal">
+      <div class="form-container">
+        <div class="form-header">
+          <h2>{{ editingItem ? 'Edit Menu Item' : 'Add New Menu Item' }}</h2>
+          <button (click)="cancelForm()" class="close-btn">✕</button>
+        </div>
+
+        <form [formGroup]="menuForm" (ngSubmit)="onSubmit()" class="menu-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name" class="form-label">Item Name</label>
+              <input
+                type="text"
+                id="name"
+                formControlName="name"
+                class="form-input"
+                [class.error]="name?.invalid && name?.touched"
+                placeholder="Enter item name"
+              >
+              <div *ngIf="name?.invalid && name?.touched" class="error-message">
+                <span *ngIf="name?.errors?.['required']">Name is required</span>
+                <span *ngIf="name?.errors?.['minlength']">Name must be at least 2 characters</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="category" class="form-label">Category</label>
+              <input
+                type="text"
+                id="category"
+                formControlName="category"
+                class="form-input"
+                [class.error]="category?.invalid && category?.touched"
+                placeholder="e.g., Main Course, Beverages"
+              >
+              <div *ngIf="category?.invalid && category?.touched" class="error-message">
+                <span *ngIf="category?.errors?.['required']">Category is required</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description" class="form-label">Description</label>
+            <textarea
+              id="description"
+              formControlName="description"
+              class="form-input"
+              [class.error]="description?.invalid && description?.touched"
+              placeholder="Describe the item..."
+              rows="3"
+            ></textarea>
+            <div *ngIf="description?.invalid && description?.touched" class="error-message">
+              <span *ngIf="description?.errors?.['required']">Description is required</span>
+              <span *ngIf="description?.errors?.['minlength']">Description must be at least 10 characters</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="price" class="form-label">Price ($)</label>
+              <input
+                type="number"
+                id="price"
+                formControlName="price"
+                class="form-input"
+                [class.error]="price?.invalid && price?.touched"
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+              >
+              <div *ngIf="price?.invalid && price?.touched" class="error-message">
+                <span *ngIf="price?.errors?.['required']">Price is required</span>
+                <span *ngIf="price?.errors?.['min']">Price must be greater than 0</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="preparationTime" class="form-label">Prep Time (minutes)</label>
+              <input
+                type="number"
+                id="preparationTime"
+                formControlName="preparationTime"
+                class="form-input"
+                [class.error]="preparationTime?.invalid && preparationTime?.touched"
+                min="1"
+              >
+              <div *ngIf="preparationTime?.invalid && preparationTime?.touched" class="error-message">
+                <span *ngIf="preparationTime?.errors?.['required']">Preparation time is required</span>
+                <span *ngIf="preparationTime?.errors?.['min']">Must be at least 1 minute</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="imageUrl" class="form-label">Image URL (optional)</label>
+            <input
+              type="url"
+              id="imageUrl"
+              formControlName="imageUrl"
+              class="form-input"
+              placeholder="https://example.com/image.jpg"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="ingredients" class="form-label">Ingredients (optional)</label>
+            <input
+              type="text"
+              id="ingredients"
+              formControlName="ingredients"
+              class="form-input"
+              placeholder="Comma-separated list of ingredients"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                formControlName="isAvailable"
+                class="checkbox-input"
+              >
+              <span class="checkbox-text">Available for ordering</span>
+            </label>
+          </div>
+
+          <div *ngIf="error" class="alert alert-error">
+            {{ error }}
+          </div>
+
+          <div *ngIf="successMessage" class="alert alert-success">
+            {{ successMessage }}
+          </div>
+
+          <div class="form-actions">
+            <button type="button" (click)="cancelForm()" class="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" [disabled]="menuForm.invalid || submitting" class="btn btn-primary">
+              <span *ngIf="submitting" class="spinner"></span>
+              {{ submitting ? 'Saving...' : (editingItem ? 'Update Item' : 'Add Item') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Menu Items Grid -->
+    <div *ngIf="!loading && !showAddForm" class="menu-grid">
+      <div class="menu-item-card" *ngFor="let item of filteredItems">
+        <div class="item-image">
+          <img 
+            [src]="item.imageUrl || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'" 
+            [alt]="item.name"
+            class="item-img"
+          >
+          <div class="availability-badge" [class.unavailable]="!item.isAvailable">
+            {{ item.isAvailable ? 'Available' : 'Unavailable' }}
+          </div>
+        </div>
+
+        <div class="item-content">
+          <div class="item-header">
+            <h3 class="item-name">{{ item.name }}</h3>
+            <span class="item-price">{{ formatCurrency(item.price) }}</span>
+          </div>
+
+          <p class="item-description">{{ item.description }}</p>
+
+          <div class="item-meta">
+            <span class="item-category">{{ item.category }}</span>
+            <span class="prep-time">⏱️ {{ item.preparationTime }}min</span>
+          </div>
+
+          <div class="item-ingredients" *ngIf="item.ingredients && item.ingredients.length > 0">
+            <strong>Ingredients:</strong>
+            <span class="ingredients-list">{{ item.ingredients.join(', ') }}</span>
+          </div>
+
+          <div class="item-actions">
+            <button (click)="editItem(item)" class="btn btn-secondary btn-sm">
+              ✏️ Edit
+            </button>
+            <button 
+              (click)="toggleAvailability(item)" 
+              class="btn btn-sm"
+              [class.btn-success]="!item.isAvailable"
+              [class.btn-danger]="item.isAvailable"
+            >
+              {{ item.isAvailable ? '❌ Disable' : '✅ Enable' }}
+            </button>
+            <button (click)="deleteItem(item)" class="btn btn-danger btn-sm">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && filteredItems.length === 0 && !showAddForm" class="empty-state">
+      <div class="empty-icon">🍽️</div>
+      <h3>No Menu Items Found</h3>
+      <p *ngIf="searchTerm || selectedCategory !== 'All'">
+        Try adjusting your search or filter criteria.
+      </p>
+      <p *ngIf="!searchTerm && selectedCategory === 'All'">
+        Start by adding your first menu item.
+      </p>
+      <button (click)="showAddItemForm()" class="btn btn-primary">
+        Add First Item
+      </button>
+    </div>
+  </div>
+</div>
