@@ -1,0 +1,243 @@
+<div class="menu-browse-container">
+  <div class="container">
+    <div class="page-header">
+      <h1>Our Menu</h1>
+      <p>Delicious food made fresh daily</p>
+      
+      <!-- Cart Button -->
+      <button (click)="toggleCart()" class="cart-btn" [class.has-items]="cart.length > 0">
+        🛒 Cart ({{ getCartItemCount() }})
+        <span *ngIf="cart.length > 0" class="cart-total">{{ formatCurrency(getCartTotal()) }}</span>
+      </button>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="filters-section">
+      <div class="search-box">
+        <input
+          type="text"
+          placeholder="Search menu items..."
+          (input)="onSearchChange($event)"
+          class="search-input"
+        >
+        <span class="search-icon">🔍</span>
+      </div>
+
+      <div class="category-filters">
+        <button
+          *ngFor="let category of getCategories()"
+          (click)="onCategoryChange(category)"
+          class="category-btn"
+          [class.active]="selectedCategory === category"
+        >
+          {{ category }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div *ngIf="successMessage" class="alert alert-success">
+      {{ successMessage }}
+    </div>
+
+    <div *ngIf="error && !showCheckout" class="alert alert-error">
+      {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner-large"></div>
+      <p>Loading menu...</p>
+    </div>
+
+    <!-- Menu Items Grid -->
+    <div *ngIf="!loading" class="menu-grid">
+      <div class="menu-item-card" *ngFor="let item of filteredItems">
+        <div class="item-image">
+          <img 
+            [src]="item.imageUrl || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'" 
+            [alt]="item.name"
+            class="item-img"
+          >
+          <div class="prep-time-badge">
+            ⏱️ {{ item.preparationTime }}min
+          </div>
+        </div>
+
+        <div class="item-content">
+          <div class="item-header">
+            <h3 class="item-name">{{ item.name }}</h3>
+            <span class="item-price">{{ formatCurrency(item.price) }}</span>
+          </div>
+
+          <p class="item-description">{{ item.description }}</p>
+
+          <div class="item-category">
+            <span class="category-tag">{{ item.category }}</span>
+          </div>
+
+          <div class="item-ingredients" *ngIf="item.ingredients && item.ingredients.length > 0">
+            <strong>Ingredients:</strong>
+            <span class="ingredients-list">{{ item.ingredients.join(', ') }}</span>
+          </div>
+
+          <div class="item-actions">
+            <button (click)="addToCart(item)" class="btn btn-primary btn-full">
+              ➕ Add to Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && filteredItems.length === 0" class="empty-state">
+      <div class="empty-icon">🍽️</div>
+      <h3>No Items Found</h3>
+      <p *ngIf="searchTerm || selectedCategory !== 'All'">
+        Try adjusting your search or filter criteria.
+      </p>
+      <p *ngIf="!searchTerm && selectedCategory === 'All'">
+        No menu items are currently available.
+      </p>
+    </div>
+  </div>
+
+  <!-- Cart Sidebar -->
+  <div class="cart-sidebar" [class.open]="showCart">
+    <div class="cart-header">
+      <h3>Your Cart</h3>
+      <button (click)="toggleCart()" class="close-btn">✕</button>
+    </div>
+
+    <div class="cart-content" *ngIf="cart.length > 0">
+      <div class="cart-items">
+        <div class="cart-item" *ngFor="let cartItem of cart">
+          <div class="cart-item-info">
+            <h4>{{ cartItem.menuItem.name }}</h4>
+            <p class="cart-item-price">{{ formatCurrency(cartItem.menuItem.price) }} each</p>
+            <p class="cart-item-instructions" *ngIf="cartItem.specialInstructions">
+              Note: {{ cartItem.specialInstructions }}
+            </p>
+          </div>
+          
+          <div class="cart-item-controls">
+            <div class="quantity-controls">
+              <button (click)="updateCartItemQuantity(cartItem, cartItem.quantity - 1)" class="qty-btn">-</button>
+              <span class="quantity">{{ cartItem.quantity }}</span>
+              <button (click)="updateCartItemQuantity(cartItem, cartItem.quantity + 1)" class="qty-btn">+</button>
+            </div>
+            
+            <div class="cart-item-actions">
+              <button (click)="editCartItemInstructions(cartItem)" class="btn-sm btn-secondary">📝</button>
+              <button (click)="removeFromCart(cartItem)" class="btn-sm btn-danger">🗑️</button>
+            </div>
+          </div>
+          
+          <div class="cart-item-total">
+            {{ formatCurrency(cartItem.menuItem.price * cartItem.quantity) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="cart-footer">
+        <div class="cart-total">
+          <strong>Total: {{ formatCurrency(getCartTotal()) }}</strong>
+        </div>
+        <div class="cart-actions">
+          <button (click)="clearCart()" class="btn btn-secondary btn-sm">Clear Cart</button>
+          <button (click)="proceedToCheckout()" class="btn btn-primary">Checkout</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-cart" *ngIf="cart.length === 0">
+      <div class="empty-cart-icon">🛒</div>
+      <p>Your cart is empty</p>
+      <button (click)="toggleCart()" class="btn btn-secondary">Continue Shopping</button>
+    </div>
+  </div>
+
+  <!-- Item Instructions Modal -->
+  <div *ngIf="editingCartItem" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Special Instructions</h3>
+        <button (click)="cancelItemInstructions()" class="close-btn">✕</button>
+      </div>
+      
+      <form [formGroup]="itemInstructionsForm" class="instructions-form">
+        <div class="form-group">
+          <label for="itemInstructions" class="form-label">
+            Special instructions for {{ editingCartItem.menuItem.name }}:
+          </label>
+          <textarea
+            id="itemInstructions"
+            formControlName="specialInstructions"
+            class="form-input"
+            placeholder="e.g., No onions, extra sauce..."
+            rows="3"
+          ></textarea>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" (click)="cancelItemInstructions()" class="btn btn-secondary">Cancel</button>
+          <button type="button" (click)="saveItemInstructions()" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Checkout Modal -->
+  <div *ngIf="showCheckout" class="modal-overlay">
+    <div class="modal-content checkout-modal">
+      <div class="modal-header">
+        <h3>Checkout</h3>
+        <button (click)="cancelCheckout()" class="close-btn">✕</button>
+      </div>
+
+      <div class="checkout-content">
+        <div class="order-summary">
+          <h4>Order Summary</h4>
+          <div class="summary-items">
+            <div class="summary-item" *ngFor="let cartItem of cart">
+              <span class="item-name">{{ cartItem.menuItem.name }} × {{ cartItem.quantity }}</span>
+              <span class="item-total">{{ formatCurrency(cartItem.menuItem.price * cartItem.quantity) }}</span>
+            </div>
+          </div>
+          <div class="summary-total">
+            <strong>Total: {{ formatCurrency(getCartTotal()) }}</strong>
+          </div>
+        </div>
+
+        <form [formGroup]="checkoutForm" (ngSubmit)="placeOrder()" class="checkout-form">
+          <div class="form-group">
+            <label for="orderInstructions" class="form-label">Special Instructions (Optional)</label>
+            <textarea
+              id="orderInstructions"
+              formControlName="specialInstructions"
+              class="form-input"
+              placeholder="Any special requests for your entire order..."
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div *ngIf="error" class="alert alert-error">
+            {{ error }}
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" (click)="cancelCheckout()" class="btn btn-secondary">Cancel</button>
+            <button type="submit" [disabled]="submitting" class="btn btn-primary">
+              <span *ngIf="submitting" class="spinner"></span>
+              {{ submitting ? 'Placing Order...' : 'Place Order' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart Overlay -->
+  <div *ngIf="showCart" class="cart-overlay" (click)="toggleCart()"></div>
+</div>

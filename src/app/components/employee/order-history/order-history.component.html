@@ -1,0 +1,224 @@
+<div class="order-history-container">
+  <div class="container">
+    <div class="page-header">
+      <h1>My Orders</h1>
+      <p>Track your food orders and order history</p>
+      <button (click)="loadOrders()" class="btn btn-secondary">
+        <span class="btn-icon">🔄</span>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Order Statistics -->
+    <div class="stats-section" *ngIf="!loading">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon total-icon">📋</div>
+          <div class="stat-content">
+            <h3>{{ getOrderStats().total }}</h3>
+            <p>Total Orders</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon pending-icon">⏳</div>
+          <div class="stat-content">
+            <h3>{{ getOrderStats().pending }}</h3>
+            <p>Active Orders</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon completed-icon">✅</div>
+          <div class="stat-content">
+            <h3>{{ getOrderStats().completed }}</h3>
+            <p>Completed</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon spent-icon">💰</div>
+          <div class="stat-content">
+            <h3>{{ formatCurrency(getOrderStats().totalSpent) }}</h3>
+            <p>Total Spent</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="filter-group">
+        <label class="filter-label">Filter by Status:</label>
+        <div class="status-filters">
+          <button
+            *ngFor="let status of statusOptions"
+            (click)="onStatusChange(status)"
+            class="status-filter-btn"
+            [class.active]="selectedStatus === status"
+          >
+            {{ status === 'All' ? 'All Orders' : status }}
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Time Period:</label>
+        <div class="timeframe-filters">
+          <button
+            *ngFor="let timeframe of timeframeOptions"
+            (click)="onTimeframeChange(timeframe.value)"
+            class="timeframe-filter-btn"
+            [class.active]="selectedTimeframe === timeframe.value"
+          >
+            {{ timeframe.label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div *ngIf="successMessage" class="alert alert-success">
+      {{ successMessage }}
+    </div>
+
+    <div *ngIf="error" class="alert alert-error">
+      {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner-large"></div>
+      <p>Loading your orders...</p>
+    </div>
+
+    <!-- Orders List -->
+    <div *ngIf="!loading" class="orders-section">
+      <div class="orders-header">
+        <h2>Your Orders ({{ filteredOrders.length }})</h2>
+      </div>
+
+      <div class="orders-list" *ngIf="filteredOrders.length > 0">
+        <div class="order-card" *ngFor="let order of filteredOrders">
+          <div class="order-header">
+            <div class="order-info">
+              <h3>Order #{{ order.id }}</h3>
+              <p class="order-date">{{ formatDate(order.orderDate) }}</p>
+            </div>
+            <div class="order-status">
+              <span class="status-badge" [class]="getStatusClass(order.status)">
+                <span class="status-icon">{{ getStatusIcon(order.status) }}</span>
+                {{ order.status }}
+              </span>
+            </div>
+          </div>
+
+          <div class="order-details">
+            <div class="order-summary">
+              <div class="summary-item">
+                <strong>Items:</strong>
+                <span>{{ getTotalItemCount(order) }} items - {{ getOrderSummary(order) }}</span>
+              </div>
+              <div class="summary-item">
+                <strong>Total:</strong>
+                <span class="order-total">{{ formatCurrency(order.totalAmount) }}</span>
+              </div>
+              <div class="summary-item" *ngIf="order.status === 'PREPARING' || order.status === 'READY'">
+                <strong>Est. Ready:</strong>
+                <span>{{ getEstimatedTime(order) }}</span>
+              </div>
+            </div>
+
+            <div class="order-items-list">
+              <h4>Order Items:</h4>
+              <div class="items-grid">
+                <div class="item-row" *ngFor="let item of order.items">
+                  <div class="item-info">
+                    <span class="item-name">{{ item.menuItemName }}</span>
+                    <span class="item-quantity">×{{ item.quantity }}</span>
+                  </div>
+                  <span class="item-price">{{ formatCurrency(item.price * item.quantity) }}</span>
+                  <div class="item-instructions" *ngIf="item.specialInstructions">
+                    <small>Note: {{ item.specialInstructions }}</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="special-instructions" *ngIf="order.specialInstructions">
+              <strong>Special Instructions:</strong>
+              <p>{{ order.specialInstructions }}</p>
+            </div>
+          </div>
+
+          <div class="order-actions">
+            <button
+              *ngIf="canCancelOrder(order.status)"
+              (click)="cancelOrder(order)"
+              class="btn btn-danger btn-sm"
+            >
+              <span class="action-icon">❌</span>
+              Cancel Order
+            </button>
+
+            <button
+              *ngIf="canReorder(order.status)"
+              (click)="reorderItems(order)"
+              class="btn btn-primary btn-sm"
+            >
+              <span class="action-icon">🔄</span>
+              Reorder
+            </button>
+
+            <div class="order-progress" *ngIf="order.status !== 'DELIVERED' && order.status !== 'CANCELLED'">
+              <div class="progress-bar">
+                <div class="progress-step" [class.active]="['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED'].includes(order.status)">
+                  <span class="step-icon">📝</span>
+                  <span class="step-label">Ordered</span>
+                </div>
+                <div class="progress-step" [class.active]="['CONFIRMED', 'PREPARING', 'READY', 'DELIVERED'].includes(order.status)">
+                  <span class="step-icon">✅</span>
+                  <span class="step-label">Confirmed</span>
+                </div>
+                <div class="progress-step" [class.active]="['PREPARING', 'READY', 'DELIVERED'].includes(order.status)">
+                  <span class="step-icon">👨‍🍳</span>
+                  <span class="step-label">Preparing</span>
+                </div>
+                <div class="progress-step" [class.active]="['READY', 'DELIVERED'].includes(order.status)">
+                  <span class="step-icon">🔔</span>
+                  <span class="step-label">Ready</span>
+                </div>
+                <div class="progress-step" [class.active]="order.status === 'DELIVERED'">
+                  <span class="step-icon">✅</span>
+                  <span class="step-label">Delivered</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="filteredOrders.length === 0" class="empty-state">
+        <div class="empty-icon">🍽️</div>
+        <h3>No Orders Found</h3>
+        <p *ngIf="selectedStatus !== 'All' || selectedTimeframe !== 'All'">
+          No orders match your current filters. Try adjusting your search criteria.
+        </p>
+        <p *ngIf="selectedStatus === 'All' && selectedTimeframe === 'All'">
+          You haven't placed any orders yet. Start by browsing our delicious menu!
+        </p>
+        <div class="empty-actions">
+          <button 
+            (click)="selectedStatus = 'All'; selectedTimeframe = 'All'; filterOrders()" 
+            class="btn btn-secondary"
+            *ngIf="selectedStatus !== 'All' || selectedTimeframe !== 'All'"
+          >
+            Clear Filters
+          </button>
+          <a routerLink="/employee/menu" class="btn btn-primary">Browse Menu</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
