@@ -26,6 +26,7 @@ export class MenuManagementComponent implements OnInit {
   submitting = false;
   error = '';
   successMessage = '';
+  errorMessage: any;
 
   constructor(
     private fb: FormBuilder,
@@ -199,21 +200,22 @@ export class MenuManagementComponent implements OnInit {
   }
 
   deleteItem(item: MenuItem): void {
-    if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
-      this.menuService.deleteMenuItem(item.id!).subscribe({
-        next: () => {
-          this.menuItems = this.menuItems.filter(i => i.id !== item.id);
-          this.extractCategories();
-          this.filterItems();
-          this.successMessage = 'Menu item deleted successfully!';
-          setTimeout(() => this.successMessage = '', 3000);
-        },
-          this.error = error.message || 'Failed to update menu item';
-          this.error = 'Failed to delete menu item';
-          this.errorMessage = error.message || 'Failed to create menu item';
-      });
-    }
+  if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+    this.menuService.deleteMenuItem(item.id!).subscribe({
+      next: () => {
+        this.menuItems = this.menuItems.filter(i => i.id !== item.id);
+        this.extractCategories();
+        this.filterItems();
+        this.successMessage = 'Menu item deleted successfully!';
+        setTimeout(() => this.successMessage = '', 3000);
+      },
+      error: (err) => {
+        this.error = err.message || 'Failed to delete menu item';
+        this.errorMessage = err.message || 'Something went wrong while deleting the menu item';
+      }
+    });
   }
+}
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {

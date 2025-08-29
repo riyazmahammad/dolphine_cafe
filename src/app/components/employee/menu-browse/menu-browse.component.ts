@@ -108,20 +108,25 @@ export class MenuBrowseComponent implements OnInit {
   }
 
   addToCart(item: MenuItem): void {
+  try {
     const existingItem = this.cart.find(cartItem => cartItem.menuItem.id === item.id);
     
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
       this.cart.push({
-          this.error = error.message || 'Failed to place order. Please try again.';
+        menuItem: item,
         quantity: 1
       });
     }
-    
+
     this.successMessage = `${item.name} added to cart!`;
     setTimeout(() => this.successMessage = '', 2000);
+
+  } catch (error: any) {
+    this.error = error.message || 'Failed to place order. Please try again.';
   }
+}
 
   updateCartItemQuantity(cartItem: CartItem, quantity: number): void {
     if (quantity <= 0) {

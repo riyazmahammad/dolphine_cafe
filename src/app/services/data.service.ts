@@ -19,7 +19,7 @@ interface LocalData {
 })
 export class DataService {
   private readonly STORAGE_KEY = 'cafeteria_data';
-  private data: LocalData;
+  private data!: LocalData ;
   
   // Subjects for reactive data
   private usersSubject = new BehaviorSubject<User[]>([]);
@@ -493,7 +493,7 @@ export class DataService {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        return this.data.orders
+        return this.data!.orders
           .filter(order => {
             const orderDate = new Date(order.orderDate);
             return orderDate >= today && orderDate < tomorrow;
@@ -537,15 +537,15 @@ export class DataService {
   getStatistics(): Observable<any> {
     return this.simulateNetworkDelay().pipe(
       map(() => {
-        const totalOrders = this.data.orders.length;
-        const pendingOrders = this.data.orders.filter(o => 
+        const totalOrders = this.data!.orders.length;
+        const pendingOrders = this.data!.orders.filter(o => 
           ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)
         ).length;
-        const completedOrders = this.data.orders.filter(o => o.status === 'DELIVERED').length;
-        const totalRevenue = this.data.orders
+        const completedOrders = this.data!.orders.filter(o => o.status === 'DELIVERED').length;
+        const totalRevenue = this.data!.orders
           .filter(o => o.status === 'DELIVERED')
           .reduce((sum, order) => sum + order.totalAmount, 0);
-        const activeMenuItems = this.data.menuItems.filter(item => item.isAvailable).length;
+        const activeMenuItems = this.data!.menuItems.filter(item => item.isAvailable).length;
 
         return {
           totalOrders,
@@ -553,8 +553,8 @@ export class DataService {
           completedOrders,
           totalRevenue,
           activeMenuItems,
-          totalUsers: this.data.users.length,
-          activeUsers: this.data.users.filter(u => u.isActive).length
+          totalUsers: this.data!.users.length,
+          activeUsers: this.data!.users.filter(u => u.isActive).length
         };
       })
     );
@@ -565,7 +565,7 @@ export class DataService {
     return this.simulateNetworkDelay().pipe(
       map(() => {
         const searchTerm = query.toLowerCase();
-        return this.data.menuItems.filter(item =>
+        return this.data!.menuItems.filter(item =>
           item.name.toLowerCase().includes(searchTerm) ||
           item.description.toLowerCase().includes(searchTerm) ||
           item.category.toLowerCase().includes(searchTerm) ||
@@ -579,7 +579,7 @@ export class DataService {
     return this.simulateNetworkDelay().pipe(
       map(() => {
         const searchTerm = query.toLowerCase();
-        return this.data.orders.filter(order =>
+        return this.data!.orders.filter(order =>
           order.userName.toLowerCase().includes(searchTerm) ||
           order.userEmail.toLowerCase().includes(searchTerm) ||
           order.id?.toString().includes(searchTerm) ||

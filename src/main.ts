@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
+import { provideRouter, RouterModule } from '@angular/router';
 import { importProvidersFrom } from '@angular/core';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
@@ -10,7 +10,7 @@ import { NavbarComponent } from './app/components/shared/navbar/navbar.component
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [NavbarComponent],
+  imports: [NavbarComponent, RouterModule],
   template: `
     <app-navbar></app-navbar>
     <router-outlet></router-outlet>
