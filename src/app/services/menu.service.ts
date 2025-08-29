@@ -1,47 +1,59 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { MenuItem, MenuCategory } from '../models/menu.model';
+import { DataService } from './data.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MenuService {
-  private apiUrl = 'http://localhost:8080/api/menu';
 
-  constructor(private http: HttpClient) {}
+  constructor(private dataService: DataService) {}
 
   getMenuItems(): Observable<MenuItem[]> {
-    return this.http.get<MenuItem[]>(`${this.apiUrl}`);
+    return this.dataService.getMenuItems();
   }
 
   getMenuItemById(id: number): Observable<MenuItem> {
-    return this.http.get<MenuItem>(`${this.apiUrl}/${id}`);
+    return this.dataService.getMenuItemById(id).pipe(
+      map(item => {
+        if (!item) {
+          throw new Error('Menu item not found');
+        }
+        return item;
+      })
+    );
   }
 
   getMenuByCategories(): Observable<MenuCategory[]> {
-    return this.http.get<MenuCategory[]>(`${this.apiUrl}/categories`);
+    return this.dataService.getMenuByCategories();
   }
 
   createMenuItem(item: MenuItem): Observable<MenuItem> {
-    return this.http.post<MenuItem>(`${this.apiUrl}`, item);
+    return this.dataService.createMenuItem(item);
   }
 
   updateMenuItem(id: number, item: MenuItem): Observable<MenuItem> {
-    return this.http.put<MenuItem>(`${this.apiUrl}/${id}`, item);
+    return this.dataService.updateMenuItem(id, item);
   }
 
   deleteMenuItem(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    return this.dataService.deleteMenuItem(id);
   }
 
   toggleAvailability(id: number): Observable<MenuItem> {
-    return this.http.patch<MenuItem>(`${this.apiUrl}/${id}/toggle-availability`, {});
+    return this.dataService.toggleMenuItemAvailability(id);
   }
 
   uploadImage(id: number, file: File): Observable<{ imageUrl: string }> {
-    const formData = new FormData();
-    formData.append('image', file);
-    return this.http.post<{ imageUrl: string }>(`${this.apiUrl}/${id}/upload-image`, formData);
+    // For local JSON, we'll simulate image upload by returning a placeholder URL
+    return new Observable(observer => {
+      setTimeout(() => {
+        const imageUrl = `https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000)}/pexels-photo-${Math.floor(Math.random() * 1000000)}.jpeg`;
+        observer.next({ imageUrl });
+        observer.complete();
+      }, 1000);
+    });
   }
 }

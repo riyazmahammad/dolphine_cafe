@@ -61,14 +61,13 @@ export class SignupComponent implements OnInit {
           this.loading = false;
           this.successMessage = response.message;
           setTimeout(() => {
-            this.router.navigate(['/auth/verify-otp'], { 
-              queryParams: { email: signupData.email } 
-            });
+            // For local JSON, redirect directly to login
+            this.router.navigate(['/auth/login']);
           }, 2000);
         },
         error: (error) => {
           this.loading = false;
-          this.errorMessage = error.error?.message || 'Signup failed. Please try again.';
+          this.errorMessage = error.message || 'Signup failed. Please try again.';
         }
       });
     }

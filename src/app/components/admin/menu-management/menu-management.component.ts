@@ -208,9 +208,9 @@ export class MenuManagementComponent implements OnInit {
           this.successMessage = 'Menu item deleted successfully!';
           setTimeout(() => this.successMessage = '', 3000);
         },
-        error: (error) => {
+          this.error = error.message || 'Failed to update menu item';
           this.error = 'Failed to delete menu item';
-        }
+          this.errorMessage = error.message || 'Failed to create menu item';
       });
     }
   }

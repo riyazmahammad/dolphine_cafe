@@ -1,21 +1,20 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { User, LoginRequest, SignupRequest, OtpRequest, AuthResponse } from '../models/user.model';
+import { DataService } from './data.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8080/api/auth';
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private tokenSubject = new BehaviorSubject<string | null>(null);
 
   public currentUser$ = this.currentUserSubject.asObservable();
   public token$ = this.tokenSubject.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(private dataService: DataService) {
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
     
@@ -26,7 +25,7 @@ export class AuthService {
   }
 
   login(loginRequest: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, loginRequest)
+    return this.dataService.authenticateUser(loginRequest.email, loginRequest.password)
       .pipe(map(response => {
         this.setAuthData(response);
         return response;
@@ -34,11 +33,12 @@ export class AuthService {
   }
 
   signup(signupRequest: SignupRequest): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/signup`, signupRequest);
+    return this.dataService.createUser(signupRequest);
   }
 
   verifyOtp(otpRequest: OtpRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/verify-otp`, otpRequest)
+    // For local JSON, we'll simulate OTP verification by just logging in the user
+    return this.dataService.authenticateUser(otpRequest.email, 'dummy_password')
       .pipe(map(response => {
         this.setAuthData(response);
         return response;
@@ -46,7 +46,13 @@ export class AuthService {
   }
 
   resendOtp(email: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/resend-otp`, { email });
+    // Simulate OTP resend
+    return new Observable(observer => {
+      setTimeout(() => {
+        observer.next({ message: 'OTP resent successfully' });
+        observer.complete();
+      }, 500);
+    });
   }
 
   logout(): void {
