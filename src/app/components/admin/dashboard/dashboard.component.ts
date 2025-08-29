@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { OrderService } from '../../../services/order.service';
 import { MenuService } from '../../../services/menu.service';
+import { DataService } from '../../../services/data.service';
 import { Order } from '../../../models/order.model';
 import { MenuItem } from '../../../models/menu.model';
 
@@ -36,7 +37,8 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private orderService: OrderService,
-    private menuService: MenuService
+    private menuService: MenuService,
+    private dataService: DataService
   ) {}
 
   ngOnInit(): void {
@@ -46,13 +48,16 @@ export class DashboardComponent implements OnInit {
   loadDashboardData(): void {
     this.loading = true;
     
-    // Load orders
-    this.orderService.getAllOrders().subscribe({
-      next: (orders) => {
-        this.calculateStats(orders);
-        this.recentOrders = orders
-          .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
-          .slice(0, 5);
+    // Load statistics from data service
+    this.dataService.getStatistics().subscribe({
+      next: (stats) => {
+        this.stats = {
+          totalOrders: stats.totalOrders,
+          pendingOrders: stats.pendingOrders,
+          completedOrders: stats.completedOrders,
+          totalRevenue: stats.totalRevenue,
+          activeMenuItems: stats.activeMenuItems
+        };
         this.loading = false;
       },
       error: (error) => {
@@ -61,26 +66,17 @@ export class DashboardComponent implements OnInit {
       }
     });
 
-    // Load menu items count
-    this.menuService.getMenuItems().subscribe({
-      next: (items) => {
-        this.stats.activeMenuItems = items.filter(item => item.isAvailable).length;
+    // Load recent orders
+    this.orderService.getAllOrders().subscribe({
+      next: (orders) => {
+        this.recentOrders = orders.slice(0, 5);
+      },
+      error: (error) => {
+        console.error('Failed to load recent orders:', error);
       }
     });
   }
 
-  private calculateStats(orders: Order[]): void {
-    this.stats.totalOrders = orders.length;
-    this.stats.pendingOrders = orders.filter(o => 
-      ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)
-    ).length;
-    this.stats.completedOrders = orders.filter(o => 
-      o.status === 'DELIVERED'
-    ).length;
-    this.stats.totalRevenue = orders
-      .filter(o => o.status === 'DELIVERED')
-      .reduce((sum, order) => sum + order.totalAmount, 0);
-  }
 
   getStatusClass(status: string): string {
     switch (status) {

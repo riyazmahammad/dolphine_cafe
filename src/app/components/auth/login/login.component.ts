@@ -47,7 +47,7 @@ export class LoginComponent implements OnInit {
         },
         error: (error) => {
           this.loading = false;
-          this.errorMessage = error.error?.message || 'Login failed. Please try again.';
+          this.errorMessage = error.message || 'Login failed. Please try again.';
         }
       });
     }

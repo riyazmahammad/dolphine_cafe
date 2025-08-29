@@ -114,7 +114,7 @@ export class MenuBrowseComponent implements OnInit {
       existingItem.quantity += 1;
     } else {
       this.cart.push({
-        menuItem: item,
+          this.error = error.message || 'Failed to place order. Please try again.';
         quantity: 1
       });
     }

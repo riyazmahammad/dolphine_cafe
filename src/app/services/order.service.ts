@@ -1,45 +1,64 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Order, CreateOrderRequest } from '../models/order.model';
+import { DataService } from './data.service';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrderService {
-  private apiUrl = 'http://localhost:8080/api/orders';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private dataService: DataService,
+    private authService: AuthService
+  ) {}
 
   createOrder(orderRequest: CreateOrderRequest): Observable<Order> {
-    return this.http.post<Order>(`${this.apiUrl}`, orderRequest);
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
+      throw new Error('User not authenticated');
+    }
+    return this.dataService.createOrder(orderRequest, currentUser.id);
   }
 
   getMyOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}/my-orders`);
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
+      throw new Error('User not authenticated');
+    }
+    return this.dataService.getOrdersByUser(currentUser.id);
   }
 
   getAllOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}`);
+    return this.dataService.getAllOrders();
   }
 
   getOrderById(id: number): Observable<Order> {
-    return this.http.get<Order>(`${this.apiUrl}/${id}`);
+    return this.dataService.getOrderById(id).pipe(
+      map(order => {
+        if (!order) {
+          throw new Error('Order not found');
+        }
+        return order;
+      })
+    );
   }
 
   updateOrderStatus(id: number, status: string): Observable<Order> {
-    return this.http.patch<Order>(`${this.apiUrl}/${id}/status`, { status });
+    return this.dataService.updateOrderStatus(id, status);
   }
 
   cancelOrder(id: number): Observable<Order> {
-    return this.http.patch<Order>(`${this.apiUrl}/${id}/cancel`, {});
+    return this.dataService.cancelOrder(id);
   }
 
   getOrdersByStatus(status: string): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}/status/${status}`);
+    return this.dataService.getOrdersByStatus(status);
   }
 
   getTodayOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}/today`);
+    return this.dataService.getTodayOrders();
   }
 }
