@@ -1,6 +1,6 @@
 <nav class="navbar">
   <div class="container navbar-content">
-    <a routerLink="/" class="navbar-brand">CafeteriaHub</a>
+    <a routerLink="/" class="navbar-brand">{{ portalTitle }}</a>
     
     <div class="navbar-menu" [class.active]="isMenuOpen">
       <div class="navbar-nav" *ngIf="currentUser">

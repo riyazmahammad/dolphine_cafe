@@ -13,6 +13,46 @@ body {
   background-color: #f9fafb;
 }
 
+/* Portal Themes */
+body.admin-theme {
+  --primary-color: #dc2626;
+  --primary-hover: #b91c1c;
+  --accent-color: #fef2f2;
+}
+
+body.employee-theme {
+  --primary-color: #059669;
+  --primary-hover: #047857;
+  --accent-color: #f0fdf4;
+}
+
+body.default-theme {
+  --primary-color: #f97316;
+  --primary-hover: #ea580c;
+  --accent-color: #fff7ed;
+}
+
+/* Apply theme colors */
+.btn-primary {
+  background-color: var(--primary-color, #f97316);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover, #ea580c);
+}
+
+.navbar-brand {
+  color: var(--primary-color, #f97316) !important;
+}
+
+.nav-link.active {
+  color: var(--primary-color, #f97316);
+}
+
+.nav-link:hover {
+  color: var(--primary-color, #f97316);
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
