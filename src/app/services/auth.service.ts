@@ -37,8 +37,7 @@ export class AuthService {
   }
 
   verifyOtp(otpRequest: OtpRequest): Observable<AuthResponse> {
-    // For local JSON, we'll simulate OTP verification by just logging in the user
-    return this.dataService.authenticateUser(otpRequest.email, 'dummy_password')
+    return this.dataService.verifyOTP(otpRequest.email, otpRequest.otp)
       .pipe(map(response => {
         this.setAuthData(response);
         return response;
@@ -46,13 +45,15 @@ export class AuthService {
   }
 
   resendOtp(email: string): Observable<{ message: string }> {
-    // Simulate OTP resend
-    return new Observable(observer => {
-      setTimeout(() => {
-        observer.next({ message: 'OTP resent successfully' });
-        observer.complete();
-      }, 500);
-    });
+    return this.dataService.resendOTP(email);
+  }
+
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.dataService.initiatePasswordReset(email);
+  }
+
+  resetPassword(email: string, otp: string, newPassword: string): Observable<{ message: string }> {
+    return this.dataService.resetPassword(email, otp, newPassword);
   }
 
   logout(): void {

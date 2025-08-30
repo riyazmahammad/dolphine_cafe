@@ -61,8 +61,10 @@ export class SignupComponent implements OnInit {
           this.loading = false;
           this.successMessage = response.message;
           setTimeout(() => {
-            // For local JSON, redirect directly to login
-            this.router.navigate(['/auth/login']);
+            // Redirect to OTP verification
+            this.router.navigate(['/auth/verify-otp'], { 
+              queryParams: { email: signupData.email, purpose: 'signup' } 
+            });
           }, 2000);
         },
         error: (error) => {

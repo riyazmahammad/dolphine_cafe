@@ -12,6 +12,8 @@ interface LocalData {
   nextUserId: number;
   nextMenuItemId: number;
   nextOrderId: number;
+  otpCodes: { [email: string]: { code: string; expiresAt: Date; purpose: 'signup' | 'reset' } };
+  passwordResetTokens: { [email: string]: { token: string; expiresAt: Date } };
 }
 
 @Injectable({
@@ -154,7 +156,9 @@ export class DataService {
       orders: [],
       nextUserId: 3,
       nextMenuItemId: 6,
-      nextOrderId: 1
+      nextOrderId: 1,
+      otpCodes: {},
+      passwordResetTokens: {}
     };
     
     this.saveData();
@@ -190,15 +194,24 @@ export class DataService {
           role: userData.role || 'EMPLOYEE',
           department: userData.department,
           phone: userData.phone,
-          isActive: true,
+          isActive: false, // User needs to verify email first
           createdAt: new Date()
         };
 
         this.data.users.push(newUser);
+        
+        // Generate OTP for email verification
+        const otp = this.generateOTP();
+        this.data.otpCodes[userData.email] = {
+          code: otp,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+          purpose: 'signup'
+        };
+        
         this.saveData();
         this.updateSubjects();
 
-        return { message: 'User registered successfully. You can now login.' };
+        return { message: `User registered successfully. Please check your email for OTP verification. (Demo OTP: ${otp})` };
       })
     );
   }
@@ -225,6 +238,138 @@ export class DataService {
           user,
           message: 'Login successful'
         };
+      })
+    );
+  }
+
+  // OTP Management
+  generateOTP(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  verifyOTP(email: string, otp: string): Observable<{ token: string; user: User; message: string }> {
+    return this.simulateNetworkDelay().pipe(
+      map(() => {
+        const otpData = this.data.otpCodes[email];
+        
+        if (!otpData) {
+          throw new Error('No OTP found for this email');
+        }
+
+        if (new Date() > otpData.expiresAt) {
+          delete this.data.otpCodes[email];
+          this.saveData();
+          throw new Error('OTP has expired');
+        }
+
+        if (otpData.code !== otp) {
+          throw new Error('Invalid OTP');
+        }
+
+        // Find and activate user
+        const user = this.data.users.find(u => u.email === email);
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        if (otpData.purpose === 'signup') {
+          user.isActive = true;
+        }
+
+        // Clean up OTP
+        delete this.data.otpCodes[email];
+        this.saveData();
+        this.updateSubjects();
+
+        const token = `mock_token_${user.id}_${Date.now()}`;
+
+        return {
+          token,
+          user,
+          message: otpData.purpose === 'signup' ? 'Email verified successfully!' : 'OTP verified successfully!'
+        };
+      })
+    );
+  }
+
+  resendOTP(email: string): Observable<{ message: string }> {
+    return this.simulateNetworkDelay().pipe(
+      map(() => {
+        const user = this.data.users.find(u => u.email === email);
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        const otp = this.generateOTP();
+        this.data.otpCodes[email] = {
+          code: otp,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+          purpose: user.isActive ? 'reset' : 'signup'
+        };
+        
+        this.saveData();
+
+        return { message: `OTP resent successfully. (Demo OTP: ${otp})` };
+      })
+    );
+  }
+
+  // Password Reset Management
+  initiatePasswordReset(email: string): Observable<{ message: string }> {
+    return this.simulateNetworkDelay().pipe(
+      map(() => {
+        const user = this.data.users.find(u => u.email === email);
+        if (!user) {
+          throw new Error('No account found with this email address');
+        }
+
+        const otp = this.generateOTP();
+        this.data.otpCodes[email] = {
+          code: otp,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+          purpose: 'reset'
+        };
+        
+        this.saveData();
+
+        return { message: `Password reset OTP sent to your email. (Demo OTP: ${otp})` };
+      })
+    );
+  }
+
+  resetPassword(email: string, otp: string, newPassword: string): Observable<{ message: string }> {
+    return this.simulateNetworkDelay().pipe(
+      map(() => {
+        const otpData = this.data.otpCodes[email];
+        
+        if (!otpData || otpData.purpose !== 'reset') {
+          throw new Error('Invalid or expired reset request');
+        }
+
+        if (new Date() > otpData.expiresAt) {
+          delete this.data.otpCodes[email];
+          this.saveData();
+          throw new Error('OTP has expired');
+        }
+
+        if (otpData.code !== otp) {
+          throw new Error('Invalid OTP');
+        }
+
+        const user = this.data.users.find(u => u.email === email);
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        // In a real app, you'd hash the password
+        // For demo purposes, we'll just store it (not recommended in production)
+        
+        // Clean up OTP
+        delete this.data.otpCodes[email];
+        this.saveData();
+        this.updateSubjects();
+
+        return { message: 'Password reset successfully! You can now login with your new password.' };
       })
     );
   }

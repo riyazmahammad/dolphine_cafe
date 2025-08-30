@@ -1,0 +1,64 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="verification-icon">
+        <span class="icon">📧</span>
+      </div>
+      <h1>{{ purpose === 'signup' ? 'Verify Your Email' : 'Verify Reset Code' }}</h1>
+      <p>We've sent a 6-digit verification code to</p>
+      <p class="email-display">{{ email }}</p>
+    </div>
+
+    <form [formGroup]="otpForm" (ngSubmit)="onSubmit()" class="auth-form">
+      <div class="form-group">
+        <label for="otp" class="form-label">Enter Verification Code</label>
+        <input
+          type="text"
+          id="otp"
+          formControlName="otp"
+          class="form-input otp-input"
+          [class.error]="otp?.invalid && otp?.touched"
+          placeholder="000000"
+          maxlength="6"
+          autocomplete="one-time-code"
+        >
+        <div *ngIf="otp?.invalid && otp?.touched" class="error-message">
+          <span *ngIf="otp?.errors?.['required']">Verification code is required</span>
+          <span *ngIf="otp?.errors?.['pattern']">Please enter a valid 6-digit code</span>
+        </div>
+      </div>
+
+      <div *ngIf="errorMessage" class="alert alert-error">
+        {{ errorMessage }}
+      </div>
+
+      <div *ngIf="successMessage" class="alert alert-success">
+        {{ successMessage }}
+      </div>
+
+      <button type="submit" [disabled]="otpForm.invalid || loading" class="btn btn-primary btn-full">
+        <span *ngIf="loading" class="spinner"></span>
+        {{ loading ? 'Verifying...' : 'Verify Code' }}
+      </button>
+
+      <div class="resend-section">
+        <p class="resend-text">Didn't receive the code?</p>
+        <button 
+          type="button" 
+          (click)="resendOtp()" 
+          [disabled]="countdown > 0 || resending"
+          class="btn-link"
+        >
+          <span *ngIf="resending" class="spinner-sm"></span>
+          {{ resending ? 'Sending...' : (countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code') }}
+        </button>
+      </div>
+
+      <div class="auth-footer">
+        <button type="button" (click)="goBack()" class="btn-link">
+          ← Back to {{ purpose === 'signup' ? 'Sign Up' : 'Forgot Password' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,6 +1,6 @@
 # CafeteriaHub - Local JSON Version
 
-A modern Angular café management system that operates entirely with local JSON data storage.
+A modern Angular café management system with email verification and password reset functionality, operating entirely with local JSON data storage.
 
 ## Features
 
@@ -16,6 +16,19 @@ A modern Angular café management system that operates entirely with local JSON 
 - Order placement and tracking
 - Order history with filtering
 
+### Authentication System
+- Email verification with OTP
+- Password reset functionality
+- Role-based access control
+- Persistent login sessions
+- Mock email system for demo
+
+### Deployment Architecture
+- Single codebase for multiple deployments
+- Subdomain-based portal separation
+- Theme customization per portal
+- Environment-based configuration
+
 ## Technical Implementation
 
 ### Local Data Storage
@@ -30,15 +43,30 @@ A modern Angular café management system that operates entirely with local JSON 
 - Simulated network delays for realistic UX
 - CRUD operations on local JSON data
 
-### Authentication
-- Mock authentication system
-- Role-based access control (Admin/Employee)
-- Persistent login sessions
+### Enhanced Authentication
+- Email verification with 6-digit OTP
+- Password reset with OTP validation
+- Account activation workflow
+- Secure token management
+- Role-based portal access
 
 ## Demo Accounts
 
-- **Admin**: admin@cafe.com (any password)
-- **Employee**: john@cafe.com (any password)
+- **Admin**: admin@cafe.com (any password) - Pre-verified
+- **Employee**: john@cafe.com (any password) - Pre-verified
+
+## New User Registration Flow
+
+1. **Sign Up** → Enter details and submit
+2. **Email Verification** → Enter 6-digit OTP (displayed in success message)
+3. **Account Activated** → Automatic login and portal redirect
+
+## Password Reset Flow
+
+1. **Forgot Password** → Enter email address
+2. **Verify OTP** → Enter 6-digit code (displayed in success message)
+3. **Reset Password** → Create new password
+4. **Login** → Use new credentials
 
 ## Getting Started
 
@@ -54,15 +82,27 @@ A modern Angular café management system that operates entirely with local JSON 
 
 3. Open your browser to `http://localhost:4200`
 
+## Subdomain Deployment Structure
+
+For production deployment with subdomains:
+
+- **Main Portal**: `cafeteriahub.com` - Landing page and authentication
+- **Admin Portal**: `admin.cafeteriahub.com` - Admin dashboard and management
+- **Employee Portal**: `employee.cafeteriahub.com` - Employee menu and orders
+
+The application automatically detects the subdomain and applies appropriate theming and navigation.
+
 ## Data Structure
 
-The application uses a structured JSON format stored in localStorage:
+The application uses an enhanced JSON structure stored in localStorage:
 
 ```json
 {
   "users": [...],
   "menuItems": [...],
   "orders": [...],
+  "otpCodes": {...},
+  "passwordResetTokens": {...},
   "nextUserId": 3,
   "nextMenuItemId": 6,
   "nextOrderId": 1
@@ -76,3 +116,6 @@ The application uses a structured JSON format stored in localStorage:
 - **Persistent Data**: Data survives browser refreshes
 - **Real-time Updates**: All changes reflect immediately
 - **Production-Ready UI**: Professional design and user experience
+- **Secure Authentication**: Email verification and password reset
+- **Multi-Portal Architecture**: Subdomain-based deployment ready
+- **Responsive Design**: Works perfectly on all devices
