@@ -56,7 +56,16 @@ export class LoginComponent implements OnInit {
         },
         error: (error) => {
           this.loading = false;
-          if (error.message === 'Account is not active') {
+          if (error.message === 'Account is not active. Please verify your email first.') {
+            this.errorMessage = 'Please verify your email address first.';
+            setTimeout(() => {
+              this.router.navigate(['/auth/verify-otp'], { 
+                queryParams: { email: this.loginForm.value.email, purpose: 'signup' } 
+              });
+            }, 2000);
+          } else {
+            this.errorMessage = error.message || 'Login failed. Please try again.';
+          }
             this.errorMessage = 'Please verify your email address first.';
             setTimeout(() => {
               this.router.navigate(['/auth/verify-otp'], { 
