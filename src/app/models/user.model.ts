@@ -1,26 +1,14 @@
-export interface User {
-  id?: number;
-  email: string;
-  name: string;
-  role: 'ADMIN' | 'EMPLOYEE';
-  department?: string;
-  phone?: string;
-  isActive?: boolean;
-  createdAt?: Date;
-}
-
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
 export interface SignupRequest {
+  name: string;
   email: string;
   password: string;
-  name: string;
-  role: 'ADMIN' | 'EMPLOYEE';
-  department?: string;
-  phone?: string;
+  phone: string;
+  department: string;
 }
 
 export interface OtpRequest {
@@ -28,8 +16,18 @@ export interface OtpRequest {
   otp: string;
 }
 
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  phone: string;
+  isActive: boolean;
+  createdAt: Date;
+}
+
 export interface AuthResponse {
   token: string;
   user: User;
-  message: string;
 }

@@ -1,93 +1,67 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { User, LoginRequest, SignupRequest, OtpRequest, AuthResponse } from '../models/user.model';
-import { DataService } from './data.service';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
+
+export type Role = 'ADMIN' | 'EMPLOYEE';
+
+export interface SignupRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+  department?: string;
+  phone?: string;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  private tokenSubject = new BehaviorSubject<string | null>(null);
+  private apiUrl = 'http://3.149.27.197:8080/dolphine/user';
+  private TOKEN_KEY = 'token';
+  private ROLE_KEY = 'userRole';
 
-  public currentUser$ = this.currentUserSubject.asObservable();
-  public token$ = this.tokenSubject.asObservable();
+  constructor(private http: HttpClient) {}
 
-  constructor(private dataService: DataService) {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    
-    if (token && user) {
-      this.tokenSubject.next(token);
-      this.currentUserSubject.next(JSON.parse(user));
-    }
-  }
-
-  login(loginRequest: LoginRequest): Observable<AuthResponse> {
-    return this.dataService.authenticateUser(loginRequest.email, loginRequest.password)
-      .pipe(map(response => {
-        this.setAuthData(response);
+  /** ✅ Login API Integration */
+  login(username: string, password: string): Observable<any> {
+    const body = { username, password };
+    return this.http.post(`${this.apiUrl}/signin`, body).pipe(
+      map((response: any) => {
+        if (response && response.token) {
+          this.setSession(response.token, response.role || 'EMPLOYEE');
+        }
         return response;
-      }));
+      })
+    );
   }
 
-  signup(signupRequest: SignupRequest): Observable<{ message: string }> {
-    return this.dataService.createUser(signupRequest);
+  /** ✅ Signup API Integration */
+  signup(payload: SignupRequest): Observable<any> {
+    return this.http.post(`${this.apiUrl}/signup`, payload);
   }
 
-  verifyOtp(otpRequest: OtpRequest): Observable<AuthResponse> {
-    // For local JSON, we'll simulate OTP verification by just logging in the user
-    return this.dataService.authenticateUser(otpRequest.email, 'dummy_password')
-      .pipe(map(response => {
-        this.setAuthData(response);
-        return response;
-      }));
-  }
-
-  resendOtp(email: string): Observable<{ message: string }> {
-    // Simulate OTP resend
-    return new Observable(observer => {
-      setTimeout(() => {
-        observer.next({ message: 'OTP resent successfully' });
-        observer.complete();
-      }, 500);
-    });
-  }
-
+  /** ✅ Logout */
   logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    this.currentUserSubject.next(null);
-    this.tokenSubject.next(null);
+    localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.ROLE_KEY);
   }
 
-  getCurrentUser(): User | null {
-    return this.currentUserSubject.value;
+  /** ✅ Session Handling */
+  setSession(token: string, role: string): void {
+    localStorage.setItem(this.TOKEN_KEY, token);
+    localStorage.setItem(this.ROLE_KEY, role);
   }
 
   getToken(): string | null {
-    return this.tokenSubject.value;
+    return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  isAuthenticated(): boolean {
+  getUserRole(): string | null {
+    return localStorage.getItem(this.ROLE_KEY);
+  }
+
+  isLoggedIn(): boolean {
     return !!this.getToken();
-  }
-
-  isAdmin(): boolean {
-    const user = this.getCurrentUser();
-    return user?.role === 'ADMIN';
-  }
-
-  isEmployee(): boolean {
-    const user = this.getCurrentUser();
-    return user?.role === 'EMPLOYEE';
-  }
-
-  private setAuthData(response: AuthResponse): void {
-    localStorage.setItem('token', response.token);
-    localStorage.setItem('user', JSON.stringify(response.user));
-    this.tokenSubject.next(response.token);
-    this.currentUserSubject.next(response.user);
   }
 }

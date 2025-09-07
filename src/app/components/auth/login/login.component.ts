@@ -1,58 +1,45 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
+  styleUrls: ['./login.component.css']
 })
-export class LoginComponent implements OnInit {
-  loginForm!: FormGroup;
+export class LoginComponent {
+  username = '';
+  password = '';
   loading = false;
   errorMessage = '';
 
-  constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private router: Router
-  ) {}
+  constructor(private auth: AuthService, private router: Router) {}
 
-  ngOnInit(): void {
-    this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
+  onLogin(): void {
+    if (!this.username || !this.password) {
+      this.errorMessage = 'Please enter username and password';
+      return;
+    }
+
+    this.loading = true;
+    this.errorMessage = '';
+
+    this.auth.login(this.username, this.password).subscribe({
+      next: ({ user }) => {
+        this.loading = false;
+        // Redirect by role
+        if (user.role === 'ADMIN') this.router.navigate(['/admin/dashboard']);
+        else this.router.navigate(['/employee/menu']);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMessage = (err?.error?.message) || err?.message || 'Login failed';
+        console.error('Login error:', err);
+      }
     });
   }
-
-  onSubmit(): void {
-    if (this.loginForm.valid) {
-      this.loading = true;
-      this.errorMessage = '';
-
-      this.authService.login(this.loginForm.value).subscribe({
-        next: (response) => {
-          this.loading = false;
-          const user = response.user;
-          
-          if (user.role === 'ADMIN') {
-            this.router.navigate(['/admin/dashboard']);
-          } else {
-            this.router.navigate(['/employee/menu']);
-          }
-        },
-        error: (error) => {
-          this.loading = false;
-          this.errorMessage = error.message || 'Login failed. Please try again.';
-        }
-      });
-    }
-  }
-
-  get email() { return this.loginForm.get('email'); }
-  get password() { return this.loginForm.get('password'); }
 }

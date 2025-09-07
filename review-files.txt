@@ -1,0 +1,388 @@
+import { Routes } from '@angular/router';
+import { AuthGuard } from './guards/auth.guard';
+import { RoleGuard } from './guards/role.guard';
+
+export const routes: Routes = [
+  // Default route
+  { path: '', redirectTo: '/auth/login', pathMatch: 'full' },
+
+  // Authentication routes
+  {
+    path: 'auth',
+    children: [
+      {
+        path: 'login',
+        loadComponent: () => import('./components/auth/login/login.component').then(m => m.LoginComponent)
+      },
+      {
+        path: 'signup',
+        loadComponent: () => import('./components/auth/signup/signup.component').then(m => m.SignupComponent)
+      }
+    ]
+  },
+
+  // Admin routes (role-based)
+  {
+    path: 'admin',
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: ['ADMIN'] },
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./components/admin/dashboard/dashboard.component').then(m => m.DashboardComponent)
+      },
+      {
+        path: 'menu',
+        loadComponent: () => import('./components/admin/menu-management/menu-management.component').then(m => m.MenuManagementComponent)
+      },
+      {
+        path: 'orders',
+        loadComponent: () => import('./components/admin/order-management/order-management.component').then(m => m.OrderManagementComponent)
+      },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+    ]
+  },
+
+  // Employee routes (role-based)
+  {
+    path: 'employee',
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: ['EMPLOYEE'] },
+    children: [
+      {
+        path: 'menu',
+        loadComponent: () => import('./components/employee/menu-browse/menu-browse.component').then(m => m.MenuBrowseComponent)
+      },
+      {
+        path: 'orders',
+        loadComponent: () => import('./components/employee/order-history/order-history.component').then(m => m.OrderHistoryComponent)
+      },
+      { path: '', redirectTo: 'menu', pathMatch: 'full' }
+    ]
+  },
+
+  // Wildcard route for 404
+  { path: '**', redirectTo: '/auth/login' }
+];
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private apiUrl = 'http://3.149.27.197:8080/dolphine/user';
+
+  constructor(private http: HttpClient) {}
+
+  login(username: string, password: string): Observable<any> {
+    const body = { username, password };
+    return this.http.post(`${this.apiUrl}/signin`, body);
+  }
+
+  logout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+  }
+
+  setSession(token: string, role: string): void {
+    localStorage.setItem('token', token);
+    localStorage.setItem('userRole', role);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('userRole');
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.getToken();
+  }
+}
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
+import { User, AuthResponse, LoginRequest, SignupRequest } from '../models/user.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class DataService {
+  private apiUrl = 'http://3.149.27.197:8080/dolphine/user/signin';
+
+  constructor(private http: HttpClient) {}
+
+  /**
+   * 🔐 Login - Connects to real backend API
+   */
+  authenticateUser(email: string, password: string): Observable<AuthResponse> {
+    const loginPayload = { email, password };
+
+    return this.http.post<any>(`${this.apiUrl}/signin`, loginPayload).pipe(
+      map(response => {
+        if (response.result) {
+          const user: User = {
+            email: response.data.email,
+            username: response.data.username,
+            role: response.role
+          };
+
+          return {
+            token: response.token,
+            user
+          };
+        } else {
+          throw new Error('Login failed');
+        }
+      })
+    );
+  }
+
+  /**
+   * 📝 Signup (You may update this later for your backend)
+   */
+  createUser(signupRequest: SignupRequest): Observable<{ message: string }> {
+    // For now, just simulate signup success
+    return new Observable(observer => {
+      setTimeout(() => {
+        observer.next({ message: 'Signup simulated (connect to real API here)' });
+        observer.complete();
+      }, 500);
+    });
+  }
+
+  /**
+   * 🔁 OTP Verification (optional - placeholder)
+   */
+  verifyOTP(email: string, otp: string): Observable<AuthResponse> {
+    // Simulate OTP verification
+    return new Observable(observer => {
+      setTimeout(() => {
+        const user: User = {
+          email,
+          username: 'Simulated User',
+          role: 'EMPLOYEE'
+        };
+        observer.next({ token: 'dummy-token', user });
+        observer.complete();
+      }, 500);
+    });
+  }
+
+  /**
+   * 🔁 Resend OTP (optional - placeholder)
+   */
+  resendOTP(email: string): Observable<{ message: string }> {
+    return new Observable(observer => {
+      setTimeout(() => {
+        observer.next({ message: 'OTP resent (simulated)' });
+        observer.complete();
+      }, 500);
+    });
+  }
+
+  /**
+   * 🔐 Forgot password (optional - placeholder)
+   */
+  initiatePasswordReset(email: string): Observable<{ message: string }> {
+    return new Observable(observer => {
+      setTimeout(() => {
+        observer.next({ message: 'Password reset initiated (simulated)' });
+        observer.complete();
+      }, 500);
+    });
+  }
+
+  /**
+   * 🔐 Reset password (optional - placeholder)
+   */
+  resetPassword(email: string, otp: string, newPassword: string): Observable<{ message: string }> {
+    return new Observable(observer => {
+      setTimeout(() => {
+        observer.next({ message: 'Password reset successful (simulated)' });
+        observer.complete();
+      }, 500);
+    });
+  }
+}
+import { Component } from '@angular/core';
+import { AuthService } from '../../../services/auth.service';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css']
+})
+export class LoginComponent {
+  username = '';
+  password = '';
+  errorMessage = '';
+  loading = false;
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  onLogin(): void {
+    this.loading = true;
+    this.errorMessage = '';
+
+    this.authService.login(this.username, this.password).subscribe({
+      next: (response) => {
+        this.loading = false;
+        if (response && response.token) {
+          // Assuming response contains { token: string, role: string }
+          this.authService.setSession(response.token, response.role);
+          if (response.role === 'ADMIN') {
+            this.router.navigate(['/dashboard']);
+          } else {
+            this.router.navigate(['/menu-browse']);
+          }
+        } else {
+          this.errorMessage = 'Login failed. Please try again.';
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMessage = 'Invalid username or password.';
+        console.error('Login error:', err);
+      }
+    });
+  }
+}
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+
+@Component({
+  selector: 'app-signup',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  templateUrl: './signup.component.html',
+  styleUrl: './signup.component.css'
+})
+export class SignupComponent implements OnInit {
+  signupForm!: FormGroup;
+  loading = false;
+  errorMessage = '';
+  successMessage = '';
+
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
+  ngOnInit(): void {
+    this.signupForm = this.fb.group({
+      name: ['', [Validators.required, Validators.minLength(2)]],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', [Validators.required]],
+      role: ['EMPLOYEE', [Validators.required]],
+      department: [''],
+      phone: ['', [Validators.pattern(/^\+?[\d\s-()]+$/)]]
+    }, { validators: this.passwordMatchValidator });
+  }
+
+  passwordMatchValidator(form: FormGroup) {
+    const password = form.get('password');
+    const confirmPassword = form.get('confirmPassword');
+    
+    if (password && confirmPassword && password.value !== confirmPassword.value) {
+      confirmPassword.setErrors({ mismatch: true });
+    } else if (confirmPassword?.hasError('mismatch')) {
+      confirmPassword.setErrors(null);
+    }
+    
+    return null;
+  }
+
+  onSubmit(): void {
+    if (this.signupForm.valid) {
+      this.loading = true;
+      this.errorMessage = '';
+      this.successMessage = '';
+
+      const { confirmPassword, ...signupData } = this.signupForm.value;
+
+      this.authService.signup(signupData).subscribe({
+        next: (response) => {
+          this.loading = false;
+          this.successMessage = response.message;
+          setTimeout(() => {
+            // For local JSON, redirect directly to login
+            this.router.navigate(['/auth/login']);
+          }, 2000);
+        },
+        error: (error) => {
+          this.loading = false;
+          this.errorMessage = error.message || 'Signup failed. Please try again.';
+        }
+      });
+    }
+  }
+
+  get name() { return this.signupForm.get('name'); }
+  get email() { return this.signupForm.get('email'); }
+  get password() { return this.signupForm.get('password'); }
+  get confirmPassword() { return this.signupForm.get('confirmPassword'); }
+  get role() { return this.signupForm.get('role'); }
+  get department() { return this.signupForm.get('department'); }
+  get phone() { return this.signupForm.get('phone'); }
+}import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { AuthService } from './services/auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(): boolean {
+    if (this.authService.isLoggedIn()) {
+      return true;
+    }
+    this.router.navigate(['/login']);
+    return false;
+  }
+}
+import { Injectable } from '@angular/core';
+import { CanActivate, ActivatedRouteSnapshot, Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class RoleGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
+  canActivate(route: ActivatedRouteSnapshot): boolean {
+    const requiredRoles = route.data['roles'] as Array<string>;
+    const currentUser = this.authService.getCurrentUser();
+    
+    if (currentUser && requiredRoles.includes(currentUser.role)) {
+      return true;
+    }
+    
+    // Redirect based on user role
+    if (currentUser?.role === 'ADMIN') {
+      this.router.navigate(['/admin/dashboard']);
+    } else if (currentUser?.role === 'EMPLOYEE') {
+      this.router.navigate(['/employee/menu']);
+    } else {
+      this.router.navigate(['/auth/login']);
+    }
+    
+    return false;
+  }
+}

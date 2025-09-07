@@ -4,8 +4,8 @@ import { RoleGuard } from './guards/role.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/auth/login', pathMatch: 'full' },
-  
-  // Authentication routes
+
+  // Authentication
   {
     path: 'auth',
     children: [
@@ -19,8 +19,8 @@ export const routes: Routes = [
       }
     ]
   },
-  
-  // Admin routes
+
+  // Admin
   {
     path: 'admin',
     canActivate: [AuthGuard, RoleGuard],
@@ -41,8 +41,8 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
-  
-  // Employee routes
+
+  // Employee
   {
     path: 'employee',
     canActivate: [AuthGuard, RoleGuard],
@@ -59,7 +59,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'menu', pathMatch: 'full' }
     ]
   },
-  
-  // Catch all
+
+  // Fallback
   { path: '**', redirectTo: '/auth/login' }
 ];
