@@ -1,0 +1,30 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Admin User",
+      "email": "admin@cafe.com",
+      "password": "admin123",
+      "role": "ADMIN",
+      "department": "Management",
+      "phone": "+1234567890",
+      "isActive": true,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "John Employee",
+      "email": "john@cafe.com",
+      "password": "john123",
+      "role": "EMPLOYEE",
+      "department": "Engineering",
+      "phone": "+1234567891",
+      "isActive": true,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "sessions": {},
+  "otpCodes": {},
+  "passwordResetTokens": {},
+  "nextUserId": 3
+}
