@@ -1,5 +1,0 @@
-{
-  "orders": [],
-  "nextOrderId": 1,
-  "orderStatuses": ["PENDING", "CONFIRMED", "PREPARING", "READY", "DELIVERED", "CANCELLED"]
-}

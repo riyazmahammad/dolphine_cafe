@@ -3,7 +3,6 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { User, LoginRequest, SignupRequest, OtpRequest, AuthResponse } from '../models/user.model';
 import { DataService } from './data.service';
-import { JsonStorageService } from './json-storage.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,30 +14,14 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
   public token$ = this.tokenSubject.asObservable();
 
-  constructor(
-    private dataService: DataService,
-    private jsonStorage: JsonStorageService
-  ) {
-    this.initializeAuthState();
-  }
-
-  private initializeAuthState(): void {
-    // Check for active session from login.json
-    this.jsonStorage.loadLoginData().subscribe(loginData => {
-      const storedToken = sessionStorage.getItem('currentToken');
-      const storedUserId = sessionStorage.getItem('currentUserId');
-      
-      if (storedToken && storedUserId) {
-        const session = loginData.sessions[storedUserId];
-        if (session && session.token === storedToken) {
-          const user = loginData.users.find((u: any) => u.id === parseInt(storedUserId));
-          if (user) {
-            this.tokenSubject.next(storedToken);
-            this.currentUserSubject.next(user);
-          }
-        }
-      }
-    });
+  constructor(private dataService: DataService) {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (token && user) {
+      this.tokenSubject.next(token);
+      this.currentUserSubject.next(JSON.parse(user));
+    }
   }
 
   login(loginRequest: LoginRequest): Observable<AuthResponse> {
@@ -73,29 +56,9 @@ export class AuthService {
     return this.dataService.resetPassword(email, otp, newPassword);
   }
 
-  verifyOtp(otpRequest: OtpRequest): Observable<AuthResponse> {
-    return this.dataService.verifyOTP(otpRequest.email, otpRequest.otp)
-      .pipe(map(response => {
-        this.setAuthData(response);
-        return response;
-      }));
-  }
-
-  resendOtp(email: string): Observable<{ message: string }> {
-    return this.dataService.resendOTP(email);
-  }
-
-  forgotPassword(email: string): Observable<{ message: string }> {
-    return this.dataService.initiatePasswordReset(email);
-  }
-
-  resetPassword(email: string, otp: string, newPassword: string): Observable<{ message: string }> {
-    return this.dataService.resetPassword(email, otp, newPassword);
-  }
-
   logout(): void {
-    sessionStorage.removeItem('currentToken');
-    sessionStorage.removeItem('currentUserId');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     this.currentUserSubject.next(null);
     this.tokenSubject.next(null);
   }
@@ -123,8 +86,8 @@ export class AuthService {
   }
 
   private setAuthData(response: AuthResponse): void {
-    sessionStorage.setItem('currentToken', response.token);
-    sessionStorage.setItem('currentUserId', response.user.id!.toString());
+    localStorage.setItem('token', response.token);
+    localStorage.setItem('user', JSON.stringify(response.user));
     this.tokenSubject.next(response.token);
     this.currentUserSubject.next(response.user);
   }

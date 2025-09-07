@@ -1,15 +1,28 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of, throwError, combineLatest } from 'rxjs';
-import { map, switchMap, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { delay, map } from 'rxjs/operators';
 import { User } from '../models/user.model';
 import { MenuItem } from '../models/menu.model';
 import { Order, CreateOrderRequest } from '../models/order.model';
-import { JsonStorageService } from './json-storage.service';
+
+interface LocalData {
+  users: User[];
+  menuItems: MenuItem[];
+  orders: Order[];
+  nextUserId: number;
+  nextMenuItemId: number;
+  nextOrderId: number;
+  otpCodes: { [email: string]: { code: string; expiresAt: Date; purpose: 'signup' | 'reset' } };
+  passwordResetTokens: { [email: string]: { token: string; expiresAt: Date } };
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class DataService {
+  private readonly STORAGE_KEY = 'cafeteria_data';
+  private data!: LocalData ;
+  
   // Subjects for reactive data
   private usersSubject = new BehaviorSubject<User[]>([]);
   private menuItemsSubject = new BehaviorSubject<MenuItem[]>([]);
@@ -19,58 +32,163 @@ export class DataService {
   public menuItems$ = this.menuItemsSubject.asObservable();
   public orders$ = this.ordersSubject.asObservable();
 
-  constructor(private jsonStorage: JsonStorageService) {
-    this.initializeDataStreams();
+  constructor() {
+    this.loadData();
   }
 
-  private initializeDataStreams(): void {
-    // Subscribe to JSON file changes and update subjects
-    this.jsonStorage.loginData$.subscribe(loginData => {
-      if (loginData?.users) {
-        this.usersSubject.next(loginData.users);
-      }
-    });
+  private loadData(): void {
+    const storedData = localStorage.getItem(this.STORAGE_KEY);
+    
+    if (storedData) {
+      this.data = JSON.parse(storedData);
+      // Convert date strings back to Date objects
+      this.data.orders.forEach(order => {
+        order.orderDate = new Date(order.orderDate);
+        if (order.createdAt) order.createdAt = new Date(order.createdAt);
+        if (order.updatedAt) order.updatedAt = new Date(order.updatedAt);
+        if (order.estimatedTime) order.estimatedTime = new Date(order.estimatedTime);
+      });
+      this.data.users.forEach(user => {
+        if (user.createdAt) user.createdAt = new Date(user.createdAt);
+      });
+      this.data.menuItems.forEach(item => {
+        if (item.createdAt) item.createdAt = new Date(item.createdAt);
+        if (item.updatedAt) item.updatedAt = new Date(item.updatedAt);
+      });
+    } else {
+      this.initializeDefaultData();
+    }
+    
+    this.updateSubjects();
+  }
 
-    this.jsonStorage.productsData$.subscribe(productsData => {
-      if (productsData?.menuItems) {
-        this.menuItemsSubject.next(productsData.menuItems);
-      }
-    });
+  private initializeDefaultData(): void {
+    this.data = {
+      users: [
+        {
+          id: 1,
+          name: 'Admin User',
+          email: 'admin@cafe.com',
+          role: 'ADMIN',
+          department: 'Management',
+          phone: '+1234567890',
+          isActive: true,
+          createdAt: new Date()
+        },
+        {
+          id: 2,
+          name: 'John Employee',
+          email: 'john@cafe.com',
+          role: 'EMPLOYEE',
+          department: 'Engineering',
+          phone: '+1234567891',
+          isActive: true,
+          createdAt: new Date()
+        }
+      ],
+      menuItems: [
+        {
+          id: 1,
+          name: 'Classic Burger',
+          description: 'Juicy beef patty with lettuce, tomato, and our special sauce',
+          price: 12.99,
+          category: 'Main Course',
+          imageUrl: 'https://images.pexels.com/photos/1639557/pexels-photo-1639557.jpeg',
+          isAvailable: true,
+          preparationTime: 15,
+          ingredients: ['beef patty', 'lettuce', 'tomato', 'special sauce', 'bun'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 2,
+          name: 'Margherita Pizza',
+          description: 'Fresh mozzarella, tomato sauce, and basil on crispy crust',
+          price: 14.99,
+          category: 'Main Course',
+          imageUrl: 'https://images.pexels.com/photos/315755/pexels-photo-315755.jpeg',
+          isAvailable: true,
+          preparationTime: 20,
+          ingredients: ['mozzarella', 'tomato sauce', 'basil', 'pizza dough'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 3,
+          name: 'Caesar Salad',
+          description: 'Crisp romaine lettuce with parmesan cheese and croutons',
+          price: 8.99,
+          category: 'Salads',
+          imageUrl: 'https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg',
+          isAvailable: true,
+          preparationTime: 10,
+          ingredients: ['romaine lettuce', 'parmesan cheese', 'croutons', 'caesar dressing'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 4,
+          name: 'Fresh Coffee',
+          description: 'Freshly brewed coffee from premium beans',
+          price: 3.99,
+          category: 'Beverages',
+          imageUrl: 'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg',
+          isAvailable: true,
+          preparationTime: 5,
+          ingredients: ['coffee beans', 'water'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 5,
+          name: 'Chocolate Cake',
+          description: 'Rich chocolate cake with creamy frosting',
+          price: 6.99,
+          category: 'Desserts',
+          imageUrl: 'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg',
+          isAvailable: true,
+          preparationTime: 5,
+          ingredients: ['chocolate', 'flour', 'eggs', 'butter', 'sugar'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ],
+      orders: [],
+      nextUserId: 3,
+      nextMenuItemId: 6,
+      nextOrderId: 1,
+      otpCodes: {},
+      passwordResetTokens: {}
+    };
+    
+    this.saveData();
+  }
 
-    this.jsonStorage.ordersData$.subscribe(ordersData => {
-      if (ordersData?.orders) {
-        this.ordersSubject.next(ordersData.orders);
-      }
-    });
+  private saveData(): void {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+  }
+
+  private updateSubjects(): void {
+    this.usersSubject.next([...this.data.users]);
+    this.menuItemsSubject.next([...this.data.menuItems]);
+    this.ordersSubject.next([...this.data.orders]);
   }
 
   private simulateNetworkDelay(): Observable<any> {
-    return of(null).pipe(
-      map(() => Math.random() * 500 + 200),
-      switchMap(delay => new Observable(observer => {
-        setTimeout(() => {
-          observer.next(null);
-          observer.complete();
-        }, delay);
-      }))
-    );
+    return of(null).pipe(delay(Math.random() * 500 + 200));
   }
 
   // User Management
   createUser(userData: any): Observable<{ message: string }> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => combineLatest([
-        this.jsonStorage.loadLoginData(),
-        this.jsonStorage.loadSignupData()
-      ])),
-      switchMap(([loginData, signupData]) => {
+      map(() => {
         // Check if email already exists
-        if (loginData.users.some((user: any) => user.email === userData.email)) {
-          return throwError(() => new Error('Email already exists'));
+        if (this.data.users.some(user => user.email === userData.email)) {
+          throw new Error('Email already exists');
         }
 
         const newUser: User = {
-          id: loginData.nextUserId++,
+          id: this.data.nextUserId++,
           name: userData.name,
           email: userData.email,
           role: userData.role || 'EMPLOYEE',
@@ -80,56 +198,40 @@ export class DataService {
           createdAt: new Date()
         };
 
-        // Add user to login data
-        loginData.users.push(newUser);
+        this.data.users.push(newUser);
         
         // Generate OTP for email verification
         const otp = this.generateOTP();
-        signupData.verificationCodes[userData.email] = {
+        this.data.otpCodes[userData.email] = {
           code: otp,
           expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-          purpose: 'signup',
-          userData: newUser
+          purpose: 'signup'
         };
+        
+        this.saveData();
+        this.updateSubjects();
 
-        // Save both files
-        return combineLatest([
-          this.jsonStorage.saveLoginData(loginData),
-          this.jsonStorage.saveSignupData(signupData)
-        ]).pipe(
-          map(() => ({ message: `User registered successfully. Please check your email for OTP verification. (Demo OTP: ${otp})` }))
-        );
+        return { message: `User registered successfully. Please check your email for OTP verification. (Demo OTP: ${otp})` };
       })
     );
   }
 
   authenticateUser(email: string, password: string): Observable<{ token: string; user: User; message: string }> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadLoginData()),
-      map(loginData => {
-        const user = loginData.users.find((u: any) => u.email === email);
+      map(() => {
+        const user = this.data.users.find(u => u.email === email);
         
         if (!user) {
           throw new Error('User not found');
         }
 
         if (!user.isActive) {
-          throw new Error('Account is not active. Please verify your email first.');
+          throw new Error('Account is not active');
         }
 
         // In a real app, you'd verify the password hash
         // For demo purposes, we'll accept any password for existing users
         const token = `mock_token_${user.id}_${Date.now()}`;
-
-        // Update session in login data
-        loginData.sessions[user.id] = {
-          token,
-          loginTime: new Date(),
-          lastActivity: new Date()
-        };
-
-        // Save updated login data
-        this.jsonStorage.saveLoginData(loginData).subscribe();
 
         return {
           token,
@@ -147,87 +249,67 @@ export class DataService {
 
   verifyOTP(email: string, otp: string): Observable<{ token: string; user: User; message: string }> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => combineLatest([
-        this.jsonStorage.loadSignupData(),
-        this.jsonStorage.loadLoginData()
-      ])),
-      switchMap(([signupData, loginData]) => {
-        const otpData = signupData.verificationCodes[email];
+      map(() => {
+        const otpData = this.data.otpCodes[email];
         
         if (!otpData) {
-          return throwError(() => new Error('No OTP found for this email'));
+          throw new Error('No OTP found for this email');
         }
 
-        if (new Date() > new Date(otpData.expiresAt)) {
-          delete signupData.verificationCodes[email];
-          return this.jsonStorage.saveSignupData(signupData).pipe(
-            switchMap(() => throwError(() => new Error('OTP has expired')))
-          );
+        if (new Date() > otpData.expiresAt) {
+          delete this.data.otpCodes[email];
+          this.saveData();
+          throw new Error('OTP has expired');
         }
 
         if (otpData.code !== otp) {
-          return throwError(() => new Error('Invalid OTP'));
+          throw new Error('Invalid OTP');
         }
 
-        // Find and activate user in login data
-        const user = loginData.users.find((u: any) => u.email === email);
+        // Find and activate user
+        const user = this.data.users.find(u => u.email === email);
         if (!user) {
-          return throwError(() => new Error('User not found'));
+          throw new Error('User not found');
         }
 
         if (otpData.purpose === 'signup') {
           user.isActive = true;
         }
 
-        // Generate token and session
-        const token = `mock_token_${user.id}_${Date.now()}`;
-        loginData.sessions[user.id] = {
-          token,
-          loginTime: new Date(),
-          lastActivity: new Date()
-        };
-
         // Clean up OTP
-        delete signupData.verificationCodes[email];
+        delete this.data.otpCodes[email];
+        this.saveData();
+        this.updateSubjects();
 
-        // Save both files
-        return combineLatest([
-          this.jsonStorage.saveLoginData(loginData),
-          this.jsonStorage.saveSignupData(signupData)
-        ]).pipe(
-          map(() => ({
-            token,
-            user,
-            message: otpData.purpose === 'signup' ? 'Email verified successfully!' : 'OTP verified successfully!'
-          }))
-        );
+        const token = `mock_token_${user.id}_${Date.now()}`;
+
+        return {
+          token,
+          user,
+          message: otpData.purpose === 'signup' ? 'Email verified successfully!' : 'OTP verified successfully!'
+        };
       })
     );
   }
 
   resendOTP(email: string): Observable<{ message: string }> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => combineLatest([
-        this.jsonStorage.loadLoginData(),
-        this.jsonStorage.loadSignupData()
-      ])),
-      switchMap(([loginData, signupData]) => {
-        const user = loginData.users.find((u: any) => u.email === email);
+      map(() => {
+        const user = this.data.users.find(u => u.email === email);
         if (!user) {
-          return throwError(() => new Error('User not found'));
+          throw new Error('User not found');
         }
 
         const otp = this.generateOTP();
-        signupData.verificationCodes[email] = {
+        this.data.otpCodes[email] = {
           code: otp,
           expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-          purpose: user.isActive ? 'reset' : 'signup',
-          userData: user
+          purpose: user.isActive ? 'reset' : 'signup'
         };
         
-        return this.jsonStorage.saveSignupData(signupData).pipe(
-          map(() => ({ message: `OTP resent successfully. (Demo OTP: ${otp})` }))
-        );
+        this.saveData();
+
+        return { message: `OTP resent successfully. (Demo OTP: ${otp})` };
       })
     );
   }
@@ -235,105 +317,87 @@ export class DataService {
   // Password Reset Management
   initiatePasswordReset(email: string): Observable<{ message: string }> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => combineLatest([
-        this.jsonStorage.loadLoginData(),
-        this.jsonStorage.loadSignupData()
-      ])),
-      switchMap(([loginData, signupData]) => {
-        const user = loginData.users.find((u: any) => u.email === email);
+      map(() => {
+        const user = this.data.users.find(u => u.email === email);
         if (!user) {
-          return throwError(() => new Error('No account found with this email address'));
+          throw new Error('No account found with this email address');
         }
 
         const otp = this.generateOTP();
-        signupData.verificationCodes[email] = {
+        this.data.otpCodes[email] = {
           code: otp,
           expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-          purpose: 'reset',
-          userData: user
+          purpose: 'reset'
         };
         
-        return this.jsonStorage.saveSignupData(signupData).pipe(
-          map(() => ({ message: `Password reset OTP sent to your email. (Demo OTP: ${otp})` }))
-        );
+        this.saveData();
+
+        return { message: `Password reset OTP sent to your email. (Demo OTP: ${otp})` };
       })
     );
   }
 
   resetPassword(email: string, otp: string, newPassword: string): Observable<{ message: string }> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => combineLatest([
-        this.jsonStorage.loadSignupData(),
-        this.jsonStorage.loadLoginData()
-      ])),
-      switchMap(([signupData, loginData]) => {
-        const otpData = signupData.verificationCodes[email];
+      map(() => {
+        const otpData = this.data.otpCodes[email];
         
         if (!otpData || otpData.purpose !== 'reset') {
-          return throwError(() => new Error('Invalid or expired reset request'));
+          throw new Error('Invalid or expired reset request');
         }
 
-        if (new Date() > new Date(otpData.expiresAt)) {
-          delete signupData.verificationCodes[email];
-          return this.jsonStorage.saveSignupData(signupData).pipe(
-            switchMap(() => throwError(() => new Error('OTP has expired')))
-          );
+        if (new Date() > otpData.expiresAt) {
+          delete this.data.otpCodes[email];
+          this.saveData();
+          throw new Error('OTP has expired');
         }
 
         if (otpData.code !== otp) {
-          return throwError(() => new Error('Invalid OTP'));
+          throw new Error('Invalid OTP');
         }
 
-        const user = loginData.users.find((u: any) => u.email === email);
+        const user = this.data.users.find(u => u.email === email);
         if (!user) {
-          return throwError(() => new Error('User not found'));
+          throw new Error('User not found');
         }
 
-        // Update password in login data
-        user.password = newPassword; // In production, hash this password
-        user.updatedAt = new Date();
-
+        // In a real app, you'd hash the password
+        // For demo purposes, we'll just store it (not recommended in production)
+        
         // Clean up OTP
-        delete signupData.verificationCodes[email];
+        delete this.data.otpCodes[email];
+        this.saveData();
+        this.updateSubjects();
 
-        // Save both files
-        return combineLatest([
-          this.jsonStorage.saveLoginData(loginData),
-          this.jsonStorage.saveSignupData(signupData)
-        ]).pipe(
-          map(() => ({ message: 'Password reset successfully! You can now login with your new password.' }))
-        );
+        return { message: 'Password reset successfully! You can now login with your new password.' };
       })
     );
   }
 
   getUserById(id: number): Observable<User | null> {
-    return this.jsonStorage.loadLoginData().pipe(
-      map(loginData => loginData.users.find((user: any) => user.id === id) || null)
-    );
+    return of(this.data.users.find(user => user.id === id) || null);
   }
 
   // Menu Management
   getMenuItems(): Observable<MenuItem[]> {
-    return this.jsonStorage.loadProductsData().pipe(
-      map(productsData => productsData.menuItems || [])
+    return this.simulateNetworkDelay().pipe(
+      map(() => [...this.data.menuItems])
     );
   }
 
   getMenuItemById(id: number): Observable<MenuItem | null> {
-    return this.jsonStorage.loadProductsData().pipe(
-      map(productsData => productsData.menuItems.find((item: any) => item.id === id) || null)
+    return this.simulateNetworkDelay().pipe(
+      map(() => this.data.menuItems.find(item => item.id === id) || null)
     );
   }
 
   getMenuByCategories(): Observable<{ name: string; items: MenuItem[] }[]> {
-    return this.jsonStorage.loadProductsData().pipe(
-      map(productsData => {
-        const menuItems = productsData.menuItems || [];
-        const categories = [...new Set(menuItems.map((item: any) => item.category))];
+    return this.simulateNetworkDelay().pipe(
+      map(() => {
+        const categories = [...new Set(this.data.menuItems.map(item => item.category))];
         return categories.map(category => ({
           name: category,
-          items: menuItems.filter((item: any) => item.category === category && item.isAvailable)
+          items: this.data.menuItems.filter(item => item.category === category && item.isAvailable)
         }));
       })
     );
@@ -341,10 +405,9 @@ export class DataService {
 
   createMenuItem(itemData: any): Observable<MenuItem> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadProductsData()),
-      switchMap(productsData => {
+      map(() => {
         const newItem: MenuItem = {
-          id: productsData.nextMenuItemId++,
+          id: this.data.nextMenuItemId++,
           name: itemData.name,
           description: itemData.description,
           price: parseFloat(itemData.price),
@@ -357,27 +420,26 @@ export class DataService {
           updatedAt: new Date()
         };
 
-        productsData.menuItems.push(newItem);
-        
-        return this.jsonStorage.saveProductsData(productsData).pipe(
-          map(() => newItem)
-        );
+        this.data.menuItems.push(newItem);
+        this.saveData();
+        this.updateSubjects();
+
+        return newItem;
       })
     );
   }
 
   updateMenuItem(id: number, itemData: any): Observable<MenuItem> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadProductsData()),
-      switchMap(productsData => {
-        const index = productsData.menuItems.findIndex((item: any) => item.id === id);
+      map(() => {
+        const index = this.data.menuItems.findIndex(item => item.id === id);
         
         if (index === -1) {
-          return throwError(() => new Error('Menu item not found'));
+          throw new Error('Menu item not found');
         }
 
         const updatedItem: MenuItem = {
-          ...productsData.menuItems[index],
+          ...this.data.menuItems[index],
           name: itemData.name,
           description: itemData.description,
           price: parseFloat(itemData.price),
@@ -389,50 +451,47 @@ export class DataService {
           updatedAt: new Date()
         };
 
-        productsData.menuItems[index] = updatedItem;
-        
-        return this.jsonStorage.saveProductsData(productsData).pipe(
-          map(() => updatedItem)
-        );
+        this.data.menuItems[index] = updatedItem;
+        this.saveData();
+        this.updateSubjects();
+
+        return updatedItem;
       })
     );
   }
 
   deleteMenuItem(id: number): Observable<void> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadProductsData()),
-      switchMap(productsData => {
-        const index = productsData.menuItems.findIndex((item: any) => item.id === id);
+      map(() => {
+        const index = this.data.menuItems.findIndex(item => item.id === id);
         
         if (index === -1) {
-          return throwError(() => new Error('Menu item not found'));
+          throw new Error('Menu item not found');
         }
 
-        productsData.menuItems.splice(index, 1);
-        
-        return this.jsonStorage.saveProductsData(productsData).pipe(
-          map(() => void 0)
-        );
+        this.data.menuItems.splice(index, 1);
+        this.saveData();
+        this.updateSubjects();
       })
     );
   }
 
   toggleMenuItemAvailability(id: number): Observable<MenuItem> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadProductsData()),
-      switchMap(productsData => {
-        const index = productsData.menuItems.findIndex((item: any) => item.id === id);
+      map(() => {
+        const index = this.data.menuItems.findIndex(item => item.id === id);
         
         if (index === -1) {
-          return throwError(() => new Error('Menu item not found'));
+          throw new Error('Menu item not found');
         }
 
-        productsData.menuItems[index].isAvailable = !productsData.menuItems[index].isAvailable;
-        productsData.menuItems[index].updatedAt = new Date();
+        this.data.menuItems[index].isAvailable = !this.data.menuItems[index].isAvailable;
+        this.data.menuItems[index].updatedAt = new Date();
         
-        return this.jsonStorage.saveProductsData(productsData).pipe(
-          map(() => productsData.menuItems[index])
-        );
+        this.saveData();
+        this.updateSubjects();
+
+        return this.data.menuItems[index];
       })
     );
   }
@@ -440,21 +499,16 @@ export class DataService {
   // Order Management
   createOrder(orderRequest: CreateOrderRequest, userId: number): Observable<Order> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => combineLatest([
-        this.jsonStorage.loadLoginData(),
-        this.jsonStorage.loadProductsData(),
-        this.jsonStorage.loadOrdersData()
-      ])),
-      switchMap(([loginData, productsData, ordersData]) => {
-        const user = loginData.users.find((u: any) => u.id === userId);
+      map(() => {
+        const user = this.data.users.find(u => u.id === userId);
         if (!user) {
-          return throwError(() => new Error('User not found'));
+          throw new Error('User not found');
         }
 
         // Calculate total and prepare order items
         let totalAmount = 0;
         const orderItems = orderRequest.items.map(item => {
-          const menuItem = productsData.menuItems.find((mi: any) => mi.id === item.menuItemId);
+          const menuItem = this.data.menuItems.find(mi => mi.id === item.menuItemId);
           if (!menuItem) {
             throw new Error(`Menu item with ID ${item.menuItemId} not found`);
           }
@@ -476,7 +530,7 @@ export class DataService {
         });
 
         const newOrder: Order = {
-          id: ordersData.nextOrderId++,
+          id: this.data.nextOrderId++,
           userId: user.id!,
           userName: user.name,
           userEmail: user.email,
@@ -492,37 +546,35 @@ export class DataService {
 
         // Calculate estimated time
         const totalPrepTime = orderItems.reduce((total, item) => {
-          const menuItem = productsData.menuItems.find((mi: any) => mi.id === item.menuItemId);
+          const menuItem = this.data.menuItems.find(mi => mi.id === item.menuItemId);
           return total + (menuItem?.preparationTime || 15) * item.quantity;
         }, 0);
         
         newOrder.estimatedTime = new Date(Date.now() + totalPrepTime * 60000);
 
-        ordersData.orders.push(newOrder);
-        
-        return this.jsonStorage.saveOrdersData(ordersData).pipe(
-          map(() => newOrder)
-        );
+        this.data.orders.push(newOrder);
+        this.saveData();
+        this.updateSubjects();
+
+        return newOrder;
       })
     );
   }
 
   getOrdersByUser(userId: number): Observable<Order[]> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadOrdersData()),
-      map(ordersData => {
-        return ordersData.orders
-          .filter((order: any) => order.userId === userId)
-          .sort((a: any, b: any) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
+      map(() => {
+        return this.data.orders
+          .filter(order => order.userId === userId)
+          .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
       })
     );
   }
 
   getAllOrders(): Observable<Order[]> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadOrdersData()),
-      map(ordersData => {
-        return [...ordersData.orders].sort((a: any, b: any) => 
+      map(() => {
+        return [...this.data.orders].sort((a, b) => 
           new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
         );
       })
@@ -531,35 +583,35 @@ export class DataService {
 
   getOrderById(id: number): Observable<Order | null> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadOrdersData()),
-      map(ordersData => ordersData.orders.find((order: any) => order.id === id) || null)
+      map(() => this.data.orders.find(order => order.id === id) || null)
     );
   }
 
   updateOrderStatus(id: number, status: string): Observable<Order> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadOrdersData()),
-      switchMap(ordersData => {
-        const index = ordersData.orders.findIndex((order: any) => order.id === id);
+      map(() => {
+        const index = this.data.orders.findIndex(order => order.id === id);
         
         if (index === -1) {
-          return throwError(() => new Error('Order not found'));
+          throw new Error('Order not found');
         }
 
-        ordersData.orders[index].status = status as any;
-        ordersData.orders[index].updatedAt = new Date();
+        this.data.orders[index].status = status as any;
+        this.data.orders[index].updatedAt = new Date();
 
         // Update estimated time based on status
         if (status === 'CONFIRMED') {
-          const totalPrepTime = ordersData.orders[index].items.reduce((total: number, item: any) => {
-            return total + (15 * item.quantity); // Default 15 min per item
+          const totalPrepTime = this.data.orders[index].items.reduce((total, item) => {
+            const menuItem = this.data.menuItems.find(mi => mi.id === item.menuItemId);
+            return total + (menuItem?.preparationTime || 15) * item.quantity;
           }, 0);
-          ordersData.orders[index].estimatedTime = new Date(Date.now() + totalPrepTime * 60000);
+          this.data.orders[index].estimatedTime = new Date(Date.now() + totalPrepTime * 60000);
         }
 
-        return this.jsonStorage.saveOrdersData(ordersData).pipe(
-          map(() => ordersData.orders[index])
-        );
+        this.saveData();
+        this.updateSubjects();
+
+        return this.data.orders[index];
       })
     );
   }
@@ -570,56 +622,75 @@ export class DataService {
 
   getOrdersByStatus(status: string): Observable<Order[]> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadOrdersData()),
-      map(ordersData => {
-        return ordersData.orders
-          .filter((order: any) => order.status === status)
-          .sort((a: any, b: any) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
+      map(() => {
+        return this.data.orders
+          .filter(order => order.status === status)
+          .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
       })
     );
   }
 
   getTodayOrders(): Observable<Order[]> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadOrdersData()),
-      map(ordersData => {
+      map(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        return ordersData.orders
-          .filter((order: any) => {
+        return this.data!.orders
+          .filter(order => {
             const orderDate = new Date(order.orderDate);
             return orderDate >= today && orderDate < tomorrow;
           })
-          .sort((a: any, b: any) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
+          .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
       })
     );
+  }
+
+  // Utility methods
+  clearAllData(): void {
+    localStorage.removeItem(this.STORAGE_KEY);
+    this.initializeDefaultData();
+    this.updateSubjects();
+  }
+
+  exportData(): string {
+    return JSON.stringify(this.data, null, 2);
+  }
+
+  importData(jsonData: string): Observable<{ message: string }> {
+    try {
+      const importedData = JSON.parse(jsonData);
+      
+      // Validate data structure
+      if (!importedData.users || !importedData.menuItems || !importedData.orders) {
+        throw new Error('Invalid data format');
+      }
+
+      this.data = importedData;
+      this.saveData();
+      this.updateSubjects();
+
+      return of({ message: 'Data imported successfully' });
+    } catch (error) {
+      return throwError(() => new Error('Failed to import data: Invalid JSON format'));
+    }
   }
 
   // Statistics
   getStatistics(): Observable<any> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => combineLatest([
-        this.jsonStorage.loadOrdersData(),
-        this.jsonStorage.loadProductsData(),
-        this.jsonStorage.loadLoginData()
-      ])),
-      map(([ordersData, productsData, loginData]) => {
-        const orders = ordersData.orders || [];
-        const menuItems = productsData.menuItems || [];
-        const users = loginData.users || [];
-
-        const totalOrders = orders.length;
-        const pendingOrders = orders.filter((o: any) => 
+      map(() => {
+        const totalOrders = this.data!.orders.length;
+        const pendingOrders = this.data!.orders.filter(o => 
           ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)
         ).length;
-        const completedOrders = orders.filter((o: any) => o.status === 'DELIVERED').length;
-        const totalRevenue = orders
-          .filter((o: any) => o.status === 'DELIVERED')
-          .reduce((sum: number, order: any) => sum + order.totalAmount, 0);
-        const activeMenuItems = menuItems.filter((item: any) => item.isAvailable).length;
+        const completedOrders = this.data!.orders.filter(o => o.status === 'DELIVERED').length;
+        const totalRevenue = this.data!.orders
+          .filter(o => o.status === 'DELIVERED')
+          .reduce((sum, order) => sum + order.totalAmount, 0);
+        const activeMenuItems = this.data!.menuItems.filter(item => item.isAvailable).length;
 
         return {
           totalOrders,
@@ -627,8 +698,8 @@ export class DataService {
           completedOrders,
           totalRevenue,
           activeMenuItems,
-          totalUsers: users.length,
-          activeUsers: users.filter((u: any) => u.isActive).length
+          totalUsers: this.data!.users.length,
+          activeUsers: this.data!.users.filter(u => u.isActive).length
         };
       })
     );
@@ -637,14 +708,13 @@ export class DataService {
   // Search functionality
   searchMenuItems(query: string): Observable<MenuItem[]> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadProductsData()),
-      map(productsData => {
+      map(() => {
         const searchTerm = query.toLowerCase();
-        return productsData.menuItems.filter((item: any) =>
+        return this.data!.menuItems.filter(item =>
           item.name.toLowerCase().includes(searchTerm) ||
           item.description.toLowerCase().includes(searchTerm) ||
           item.category.toLowerCase().includes(searchTerm) ||
-          item.ingredients?.some((ing: string) => ing.toLowerCase().includes(searchTerm))
+          item.ingredients?.some(ing => ing.toLowerCase().includes(searchTerm))
         );
       })
     );
@@ -652,73 +722,14 @@ export class DataService {
 
   searchOrders(query: string): Observable<Order[]> {
     return this.simulateNetworkDelay().pipe(
-      switchMap(() => this.jsonStorage.loadOrdersData()),
-      map(ordersData => {
+      map(() => {
         const searchTerm = query.toLowerCase();
-        return ordersData.orders.filter((order: any) =>
+        return this.data!.orders.filter(order =>
           order.userName.toLowerCase().includes(searchTerm) ||
           order.userEmail.toLowerCase().includes(searchTerm) ||
           order.id?.toString().includes(searchTerm) ||
-          order.items.some((item: any) => item.menuItemName.toLowerCase().includes(searchTerm))
+          order.items.some(item => item.menuItemName.toLowerCase().includes(searchTerm))
         );
-      })
-    );
-  }
-
-  // Utility methods
-  clearAllData(): Observable<{ message: string }> {
-    const defaultLoginData = {
-      users: [],
-      sessions: {},
-      otpCodes: {},
-      passwordResetTokens: {},
-      nextUserId: 1
-    };
-
-    const defaultSignupData = {
-      pendingUsers: [],
-      verificationCodes: {},
-      signupAttempts: {}
-    };
-
-    const defaultProductsData = {
-      menuItems: [],
-      categories: [],
-      nextMenuItemId: 1
-    };
-
-    const defaultOrdersData = {
-      orders: [],
-      nextOrderId: 1,
-      orderStatuses: ["PENDING", "CONFIRMED", "PREPARING", "READY", "DELIVERED", "CANCELLED"]
-    };
-
-    return combineLatest([
-      this.jsonStorage.saveLoginData(defaultLoginData),
-      this.jsonStorage.saveSignupData(defaultSignupData),
-      this.jsonStorage.saveProductsData(defaultProductsData),
-      this.jsonStorage.saveOrdersData(defaultOrdersData)
-    ]).pipe(
-      map(() => ({ message: 'All data cleared successfully' }))
-    );
-  }
-
-  exportData(): Observable<string> {
-    return combineLatest([
-      this.jsonStorage.loadLoginData(),
-      this.jsonStorage.loadSignupData(),
-      this.jsonStorage.loadProductsData(),
-      this.jsonStorage.loadOrdersData()
-    ]).pipe(
-      map(([loginData, signupData, productsData, ordersData]) => {
-        const exportData = {
-          login: loginData,
-          signup: signupData,
-          products: productsData,
-          orders: ordersData,
-          exportedAt: new Date()
-        };
-        return JSON.stringify(exportData, null, 2);
       })
     );
   }

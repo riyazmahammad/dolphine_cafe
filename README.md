@@ -1,6 +1,6 @@
-# CafeteriaHub - JSON File Storage Version
+# CafeteriaHub - Local JSON Version
 
-A modern Angular café management system with email verification and password reset functionality, operating entirely with JSON file-based data storage.
+A modern Angular café management system with email verification and password reset functionality, operating entirely with local JSON data storage.
 
 ## Features
 
@@ -31,18 +31,17 @@ A modern Angular café management system with email verification and password re
 
 ## Technical Implementation
 
-### JSON File Storage
-- All data stored in separate JSON files
-- No localStorage or sessionStorage dependencies
-- Direct file-based persistence
-- Real-time UI updates via reactive streams
+### Local Data Storage
+- All data stored in browser's localStorage
+- No backend API dependencies
+- Automatic data persistence
+- Real-time UI updates
 
 ### Data Management
-- JsonStorageService for file operations
-- DataService for business logic
+- Centralized DataService for all operations
 - Reactive data streams using RxJS
 - Simulated network delays for realistic UX
-- CRUD operations on JSON files
+- CRUD operations on local JSON data
 
 ### Enhanced Authentication
 - Email verification with 6-digit OTP
@@ -93,57 +92,30 @@ For production deployment with subdomains:
 
 The application automatically detects the subdomain and applies appropriate theming and navigation.
 
-## JSON File Structure
+## Data Structure
 
-The application uses separate JSON files for different data types:
+The application uses an enhanced JSON structure stored in localStorage:
 
-### login.json
 ```json
 {
   "users": [...],
-  "sessions": {...},
+  "menuItems": [...],
+  "orders": [...],
   "otpCodes": {...},
   "passwordResetTokens": {...},
-  "nextUserId": 3
-}
-```
-
-### signup.json
-```json
-{
-  "pendingUsers": [...],
-  "verificationCodes": {...},
-  "signupAttempts": {...}
-}
-```
-
-### products.json
-```json
-{
-  "menuItems": [...],
-  "categories": [...],
-  "nextMenuItemId": 6
-}
-```
-
-### orders.json
-```json
-{
-  "orders": [...],
-  "nextOrderId": 1,
-  "orderStatuses": [...]
+  "nextUserId": 3,
+  "nextMenuItemId": 6,
+  "nextOrderId": 1
 }
 ```
 
 ## Key Benefits
 
-- **File-Based Storage**: Uses dedicated JSON files for each data type
+- **No Backend Required**: Runs entirely in the browser
 - **Instant Setup**: No database or server configuration needed
-- **Persistent Data**: Data stored in JSON files
+- **Persistent Data**: Data survives browser refreshes
 - **Real-time Updates**: All changes reflect immediately
 - **Production-Ready UI**: Professional design and user experience
 - **Secure Authentication**: Email verification and password reset
 - **Multi-Portal Architecture**: Subdomain-based deployment ready
 - **Responsive Design**: Works perfectly on all devices
-- **Separation of Concerns**: Each data type has its own JSON file
-- **Easy Data Management**: Clear file structure for different operations
